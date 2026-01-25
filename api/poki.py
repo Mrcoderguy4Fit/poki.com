@@ -13,9 +13,9 @@ class handler(BaseHTTPRequestHandler):
         
         # Custom image mappings - add more here
         IMAGES = {
-            "mycatimage": "https://i.imgur.com/5M6F3wQ.jpeg",
-            "dogpic": "https://i.imgur.com/2QksCKj.jpeg",
-            "meme": "https://i.imgur.com/X8TjKyj.jpeg",
+            "mycatimage": "https://tse1.mm.bing.net/th/id/OIP.RXrqLpAA646xM_jjo3oWwgHaEK?rs=1&pid=ImgDetMain&o=7&rm=3",
+            "dogpic": "https://tse1.mm.bing.net/th/id/OIP.RXrqLpAA646xM_jjo3oWwgHaEK?rs=1&pid=ImgDetMain&o=7&rm=3",
+            "meme": "https://tse1.mm.bing.net/th/id/OIP.RXrqLpAA646xM_jjo3oWwgHaEK?rs=1&pid=ImgDetMain&o=7&rm=3",
             # Add more custom names here
         }
         
