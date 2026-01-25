@@ -90,6 +90,15 @@ class handler(BaseHTTPRequestHandler):
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Image">
+    <meta property="og:image" content="{image_url}">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{image_url}">
+    <meta name="theme-color" content="#000000">
     <title>Image</title>
     <style>
         body {{
@@ -117,6 +126,8 @@ class handler(BaseHTTPRequestHandler):
             font-family: 'Courier New', monospace;
             font-size: 12px;
             max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
             word-wrap: break-word;
             display: none;
             z-index: 9999;
